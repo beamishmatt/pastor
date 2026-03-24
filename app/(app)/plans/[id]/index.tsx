@@ -11,12 +11,102 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
+import { Image } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, Radius, Shadow } from '../../../../components/ui/tokens';
+import { getPlanTheme } from '../../../../components/ui/planThemes';
 import { useSubscription } from '../../../../hooks/useSubscription';
 import { useReadingPlans, PlanReading } from '../../../../hooks/useReadingPlans';
 import { supabase } from '../../../../lib/supabase';
+
+// ─── Hero illustration ────────────────────────────────────────────────────────
+
+function PlanHero({ title, slug }: { title: string; slug: string }) {
+  const theme = getPlanTheme(title, slug);
+
+  if (theme.image) {
+    return (
+      <Image
+        source={theme.image}
+        style={styles.heroImage}
+        resizeMode="cover"
+      />
+    );
+  }
+
+  // Pure-RN gradient fallback (no native module needed)
+  const [dark, mid, light] = theme.colors;
+  return (
+    <View style={[styles.heroImage, { backgroundColor: dark, overflow: 'hidden' }]}>
+      {/* Mid tone — large soft circle bottom-left */}
+      <View style={[styles.heroBlob1, { backgroundColor: mid }]} />
+      {/* Light tone — large soft circle top-right */}
+      <View style={[styles.heroBlob2, { backgroundColor: light }]} />
+      {/* Orb highlight */}
+      <View style={[styles.heroOrb, { backgroundColor: theme.orbColor }]} />
+    </View>
+  );
+}
+
+// ─── Progress card ────────────────────────────────────────────────────────────
+
+function ProgressCard({
+  enrollment,
+  plan,
+  progress,
+  todayReading,
+  enrolling,
+  colors,
+  onContinue,
+}: {
+  enrollment: ReturnType<ReturnType<typeof useReadingPlans>['getEnrollmentForPlan']>;
+  plan: { duration_days: number };
+  progress: number;
+  todayReading: PlanReading | null;
+  enrolling: boolean;
+  colors: typeof Colors.light;
+  onContinue: () => void;
+}) {
+  const pct = Math.round(Math.min(100, Math.max(0, progress * 100)));
+  return (
+    <View style={[styles.progressCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={styles.progressStats}>
+        <Text style={[styles.progressStatText, { color: colors.textSecondary }]}>{pct}% complete</Text>
+        <Text style={[styles.progressStatText, { color: colors.textSecondary }]}>
+          Day {enrollment!.current_day} of {plan.duration_days}
+        </Text>
+      </View>
+      <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+        <View style={[styles.progressFill, { backgroundColor: colors.accent, width: `${pct}%` }]} />
+      </View>
+
+      {todayReading && (
+        <View style={styles.todaySection}>
+          <Text style={[styles.todayTitle, { color: colors.textPrimary }]}>
+            Today: {todayReading.title}
+          </Text>
+          <Text style={[styles.todayPassage, { color: colors.textSecondary }]}>
+            Scripture Focus: {todayReading.passage_ref}
+          </Text>
+        </View>
+      )}
+
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={onContinue}
+        disabled={enrolling}
+        style={[styles.continueBtn, { backgroundColor: colors.accent, opacity: enrolling ? 0.6 : 1 }]}
+      >
+        <Text style={styles.continueBtnText}>
+          {enrolling ? 'Starting…' : 'Continue'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function PlanDetailScreen() {
   const { id: slug } = useLocalSearchParams<{ id: string }>();
@@ -39,7 +129,6 @@ export default function PlanDetailScreen() {
 
   const plan = plans.find(p => p.slug === slug);
 
-  // Load day-by-day readings for this plan
   useEffect(() => {
     if (!plan) return;
     setReadingsLoading(true);
@@ -57,25 +146,22 @@ export default function PlanDetailScreen() {
   const enrollment = plan ? getEnrollmentForPlan(plan.id) : null;
   const completedDays = enrollment ? getCompletedDays(enrollment.id) : [];
   const progress = plan && enrollment ? getProgress(enrollment.id, plan.duration_days) : 0;
+  const todayReading = enrollment
+    ? readings.find(r => r.day_number === enrollment.current_day) ?? null
+    : null;
 
   const handleStartOrContinue = useCallback(async () => {
     if (!plan) return;
-    if (plan.is_pro && !isPro) {
-      router.push('/paywall');
-      return;
-    }
+    if (plan.is_pro && !isPro) { router.push('/paywall'); return; }
     if (!enrollment) {
       setEnrolling(true);
-      try {
-        await enroll(plan.id);
-      } catch (e) {
+      try { await enroll(plan.id); } catch {
         Alert.alert('Error', 'Could not start this plan. Please try again.');
         setEnrolling(false);
         return;
       }
       setEnrolling(false);
     }
-    // Navigate to current day (or day 1 if just enrolled)
     const currentDay = enrollment?.current_day ?? 1;
     router.push(`/plans/${slug}/${currentDay}`);
   }, [plan, isPro, enrollment, enroll, slug]);
@@ -94,10 +180,7 @@ export default function PlanDetailScreen() {
           text: isAI ? 'Delete' : 'Remove',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await deletePlan(plan);
-              router.back();
-            } catch {
+            try { await deletePlan(plan); router.back(); } catch {
               Alert.alert('Error', 'Could not delete this plan. Please try again.');
             }
           },
@@ -109,34 +192,24 @@ export default function PlanDetailScreen() {
   const handleDayPress = useCallback(
     (dayNumber: number) => {
       if (!plan) return;
-      if (plan.is_pro && !isPro) {
-        router.push('/paywall');
-        return;
-      }
+      if (plan.is_pro && !isPro) { router.push('/paywall'); return; }
       if (!enrollment) {
-        // Need to enroll first
-        Alert.alert(
-          'Start this plan?',
-          `Begin "${plan.title}" today?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Start',
-              onPress: async () => {
-                setEnrolling(true);
-                try {
-                  await enroll(plan.id);
-                } catch {
-                  Alert.alert('Error', 'Could not start this plan. Please try again.');
-                  setEnrolling(false);
-                  return;
-                }
+        Alert.alert('Start this plan?', `Begin "${plan.title}" today?`, [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Start',
+            onPress: async () => {
+              setEnrolling(true);
+              try { await enroll(plan.id); } catch {
+                Alert.alert('Error', 'Could not start this plan. Please try again.');
                 setEnrolling(false);
-                router.push(`/plans/${slug}/${dayNumber}`);
-              },
+                return;
+              }
+              setEnrolling(false);
+              router.push(`/plans/${slug}/${dayNumber}`);
             },
-          ]
-        );
+          },
+        ]);
         return;
       }
       router.push(`/plans/${slug}/${dayNumber}`);
@@ -155,298 +228,352 @@ export default function PlanDetailScreen() {
   }
 
   const isLocked = plan.is_pro && !isPro;
-  const currentDay = enrollment?.current_day ?? null;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-      <StatusBar
-        barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.background}
-      />
+      <StatusBar barStyle="light-content" />
 
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      {/* Nav row — sits above the hero, inside safe area */}
+      <View style={styles.navRow}>
         <TouchableOpacity
           onPress={() => router.back()}
-          activeOpacity={0.6}
+          activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={styles.backButton}
+          style={styles.navBtn}
         >
-          <Text style={[styles.backArrow, { color: colors.textPrimary }]}>←</Text>
+          <Feather name="arrow-left" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-          {plan.title}
-        </Text>
-        <View style={styles.headerRight}>
-          {(enrollment || plan.is_ai_generated) && (
-            <TouchableOpacity
-              onPress={handleDelete}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel="Delete plan"
-            >
-              <Feather name="trash-2" size={18} color={colors.textTertiary} />
-            </TouchableOpacity>
-          )}
-        </View>
+        {(enrollment || plan.is_ai_generated) && (
+          <TouchableOpacity
+            onPress={handleDelete}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.navBtn}
+          >
+            <Feather name="trash-2" size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Hero */}
-        <View style={[styles.hero, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <View style={[styles.durationPill, { backgroundColor: colors.accentSecondary + '22', borderColor: colors.accentSecondary + '44' }]}>
-            <Text style={[styles.durationPillText, { color: colors.accentSecondary }]}>
-              {plan.duration_days}-day plan
-            </Text>
-          </View>
-          <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>{plan.title}</Text>
-          <Text style={[styles.heroDesc, { color: colors.textSecondary }]}>{plan.description}</Text>
-
-          {enrollment && (
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { backgroundColor: colors.accentSecondary, width: `${Math.round(progress * 100)}%` },
-                  ]}
-                />
-              </View>
-              <Text style={[styles.progressText, { color: colors.textTertiary }]}>
-                {Math.round(progress * 100)}% complete · Day {enrollment.current_day} of {plan.duration_days}
-              </Text>
-            </View>
-          )}
-
-          {isLocked ? (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => router.push('/paywall')}
-              style={[styles.ctaButton, { backgroundColor: colors.accent }]}
-            >
-              <Text style={styles.ctaButtonText}>Unlock with Pro</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleStartOrContinue}
-              disabled={enrolling}
-              style={[styles.ctaButton, { backgroundColor: colors.accent, opacity: enrolling ? 0.6 : 1 }]}
-            >
-              <Text style={styles.ctaButtonText}>
-                {enrolling ? 'Starting...' : !enrollment ? 'Start Plan' : `Continue — Day ${enrollment.current_day}`}
-              </Text>
-            </TouchableOpacity>
-          )}
+        {/* Hero image — inset with padding */}
+        <View style={styles.heroWrap}>
+          <PlanHero title={plan.title} slug={slug} />
         </View>
 
-        {/* Day List */}
-        <View style={styles.dayList}>
-          <Text style={[styles.dayListTitle, { color: colors.textPrimary }]}>Your Reading Schedule</Text>
+        {/* Content */}
+        <View style={styles.content}>
+          {/* Label + title + description */}
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+            {enrollment ? 'Current Journey' : `${plan.duration_days}-Day Plan`}
+          </Text>
+          <Text style={[styles.planTitle, { color: colors.textPrimary }]}>{plan.title}</Text>
+          <Text style={[styles.planDesc, { color: colors.textSecondary }]}>{plan.description}</Text>
 
-          {readingsLoading ? (
-            <ActivityIndicator color={colors.accent} style={{ marginTop: Spacing.xl }} />
+          {/* Progress card (enrolled) or start button (not enrolled) */}
+          {enrollment ? (
+            <ProgressCard
+              enrollment={enrollment}
+              plan={plan}
+              progress={progress}
+              todayReading={todayReading}
+              enrolling={enrolling}
+              colors={colors}
+              onContinue={handleStartOrContinue}
+            />
           ) : (
-            readings.map(reading => {
-              const isDone = completedDays.includes(reading.day_number);
-              const isToday = currentDay === reading.day_number;
-              const isFuture = currentDay != null && reading.day_number > currentDay && !isDone;
-              const isAccessible = !isLocked && (!isFuture || isDone);
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={isLocked ? () => router.push('/paywall') : handleStartOrContinue}
+              disabled={enrolling}
+              style={[styles.startBtn, { backgroundColor: colors.accent, opacity: enrolling ? 0.6 : 1 }]}
+            >
+              <Text style={styles.startBtnText}>
+                {isLocked ? 'Unlock with Pro' : enrolling ? 'Starting…' : 'Start Plan'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
-              return (
-                <TouchableOpacity
-                  key={reading.id}
-                  activeOpacity={isAccessible ? 0.7 : 1}
-                  onPress={() => isAccessible && handleDayPress(reading.day_number)}
-                  style={[
-                    styles.dayRow,
-                    {
-                      backgroundColor: isToday
-                        ? colors.accent + '11'
-                        : colors.surfaceElevated,
-                      borderColor: isToday ? colors.accent + '44' : colors.border,
-                      opacity: isFuture ? 0.5 : 1,
-                    },
-                    Shadow.sm,
-                  ]}
-                >
-                  {/* Day indicator */}
-                  <View
+          {/* Reading schedule */}
+          <View style={styles.scheduleSection}>
+            <View style={styles.scheduleHeader}>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Reading Schedule</Text>
+              <View style={[styles.scheduleDivider, { backgroundColor: colors.border }]} />
+            </View>
+
+            {readingsLoading ? (
+              <ActivityIndicator color={colors.accent} style={{ marginTop: Spacing.xl }} />
+            ) : (
+              readings.map((reading, index) => {
+                const isDone = completedDays.includes(reading.day_number);
+                const isToday = enrollment?.current_day === reading.day_number;
+                const isFuture = enrollment != null && reading.day_number > enrollment.current_day && !isDone;
+                const isAccessible = !isLocked && (!isFuture || isDone);
+
+                return (
+                  <TouchableOpacity
+                    key={reading.id}
+                    activeOpacity={isAccessible ? 0.7 : 1}
+                    onPress={() => isAccessible && handleDayPress(reading.day_number)}
                     style={[
-                      styles.dayIndicator,
-                      {
-                        backgroundColor: isDone
-                          ? colors.accentSecondary
-                          : isToday
-                          ? colors.accent
-                          : colors.surface,
-                        borderColor: isDone ? colors.accentSecondary : isToday ? colors.accent : colors.border,
-                      },
+                      styles.dayRow,
+                      { borderBottomColor: colors.border },
+                      index === 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
                     ]}
                   >
-                    {isDone ? (
-                      <Text style={styles.checkmark}>✓</Text>
-                    ) : (
+                    {/* Check circle */}
+                    <View
+                      style={[
+                        styles.dayCheck,
+                        isDone
+                          ? { backgroundColor: colors.accent, borderColor: colors.accent }
+                          : { backgroundColor: 'transparent', borderColor: colors.border },
+                      ]}
+                    >
+                      {isDone && <Feather name="check" size={12} color="#FFFFFF" />}
+                    </View>
+
+                    {/* Day label + title */}
+                    <View style={styles.dayBody}>
+                      <Text style={[styles.dayLabel, { color: colors.textTertiary }]}>
+                        Day {reading.day_number}
+                      </Text>
                       <Text
                         style={[
-                          styles.dayNumber,
-                          { color: isToday ? '#FFFFFF' : colors.textTertiary },
+                          styles.dayTitle,
+                          { color: isFuture ? colors.textTertiary : colors.textPrimary },
+                          isDone && styles.dayTitleDone,
                         ]}
+                        numberOfLines={1}
                       >
-                        {reading.day_number}
+                        {reading.title}
                       </Text>
-                    )}
-                  </View>
+                    </View>
 
-                  {/* Content */}
-                  <View style={styles.dayContent}>
-                    <Text
-                      style={[
-                        styles.dayTitle,
-                        { color: isFuture ? colors.textTertiary : colors.textPrimary },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {reading.title}
-                    </Text>
-                    <Text style={[styles.dayPassage, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {/* Passage ref */}
+                    <Text style={[styles.dayPassage, { color: colors.textTertiary }]} numberOfLines={1}>
                       {reading.passage_ref}
                     </Text>
-                  </View>
-
-                  {/* Today badge */}
-                  {isToday && (
-                    <View style={[styles.todayBadge, { backgroundColor: colors.accent }]}>
-                      <Text style={styles.todayBadgeText}>Today</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })
-          )}
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: {
+  scrollContent: { paddingBottom: Spacing['3xl'] },
+
+  // Nav row above hero
+  navRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.sm,
   },
-  backButton: { width: 40, alignItems: 'flex-start', justifyContent: 'center' },
-  backArrow: { fontSize: Typography.size.lg, fontFamily: Typography.fontFamily.regular },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.size.md,
-    fontWeight: '600',
+  navBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  headerRight: { width: 40, alignItems: 'flex-end', justifyContent: 'center' },
-  scrollContent: { paddingBottom: Spacing['3xl'] },
-  // Hero
-  hero: {
-    padding: Spacing.xl,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+
+  // Hero landscape illustration
+  heroWrap: {
+    paddingHorizontal: Spacing.base,
+  },
+  heroImage: {
+    height: 200,
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
+  },
+  heroBlob1: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    bottom: -80,
+    left: -60,
+    opacity: 0.7,
+  },
+  heroBlob2: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    top: -60,
+    right: -40,
+    opacity: 0.55,
+  },
+  heroOrb: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    top: 28,
+    right: 52,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+
+  // Content
+  content: {
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.xl,
     gap: Spacing.md,
   },
-  durationPill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 4,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-  },
-  durationPillText: {
-    fontFamily: Typography.fontFamily.medium,
+  sectionLabel: {
+    fontFamily: Typography.fontFamily.semibold,
     fontSize: Typography.size.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginBottom: 2,
+  },
+  planTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.size['2xl'],
+    fontWeight: '700',
+    lineHeight: Typography.size['2xl'] * 1.2,
+  },
+  planDesc: {
+    fontFamily: Typography.fontFamily.serif,
+    fontStyle: 'italic',
+    fontSize: Typography.size.base,
+    lineHeight: Typography.size.base * 1.65,
+    marginBottom: Spacing.sm,
+  },
+
+  // Progress card
+  progressCard: {
+    borderRadius: Radius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.base,
+    gap: Spacing.sm,
+    ...Shadow.sm,
+  },
+  progressStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  progressStatText: {
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.size.sm,
     fontWeight: '500',
   },
-  heroTitle: {
+  progressTrack: {
+    height: 6,
+    borderRadius: Radius.full,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: Radius.full,
+  },
+  todaySection: {
+    gap: 4,
+    paddingTop: Spacing.xs,
+  },
+  todayTitle: {
     fontFamily: Typography.fontFamily.bold,
-    fontSize: Typography.size.xl,
+    fontSize: Typography.size.md,
     fontWeight: '700',
-    lineHeight: Typography.size.xl * 1.2,
+    lineHeight: Typography.size.md * 1.3,
   },
-  heroDesc: {
+  todayPassage: {
     fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.base,
-    lineHeight: Typography.size.base * 1.6,
+    fontSize: Typography.size.sm,
   },
-  progressContainer: { gap: Spacing.xs },
-  progressTrack: { height: 5, borderRadius: Radius.full, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: Radius.full },
-  progressText: { fontFamily: Typography.fontFamily.regular, fontSize: Typography.size.sm },
-  ctaButton: {
+  continueBtn: {
     alignItems: 'center',
     paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
+    borderRadius: Radius.full,
     marginTop: Spacing.xs,
   },
-  ctaButtonText: {
+  continueBtnText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.size.base,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: '#FFFFFF',
+  },
+
+  // Start button (not enrolled)
+  startBtn: {
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.full,
+    marginTop: Spacing.xs,
+  },
+  startBtnText: {
     fontFamily: Typography.fontFamily.semibold,
     fontSize: Typography.size.base,
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  // Day list
-  dayList: { padding: Spacing.base, gap: Spacing.sm, paddingTop: Spacing.xl },
-  dayListTitle: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.size.md,
-    fontWeight: '600',
-    marginBottom: Spacing.sm,
+
+  // Reading schedule
+  scheduleSection: {
+    marginTop: Spacing.md,
+    gap: 0,
+  },
+  scheduleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  scheduleDivider: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
   },
   dayRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.md,
     gap: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  dayIndicator: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  dayCheck: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  checkmark: {
-    fontFamily: Typography.fontFamily.bold,
-    fontSize: Typography.size.sm,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  dayBody: {
+    flex: 1,
+    gap: 2,
   },
-  dayNumber: {
+  dayLabel: {
     fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.xs,
     fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
-  dayContent: { flex: 1, gap: 2 },
   dayTitle: {
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.size.base,
     fontWeight: '500',
   },
-  dayPassage: { fontFamily: Typography.fontFamily.regular, fontSize: Typography.size.sm },
-  todayBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: Radius.full,
+  dayTitleDone: {
+    textDecorationLine: 'line-through',
+    opacity: 0.5,
   },
-  todayBadgeText: {
-    fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.size.xs,
-    fontWeight: '500',
-    color: '#FFFFFF',
+  dayPassage: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.size.sm,
+    flexShrink: 0,
   },
 });

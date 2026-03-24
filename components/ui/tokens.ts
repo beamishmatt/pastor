@@ -2,58 +2,58 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    // Accents
-    accent: '#8C7E6F',          // warm stone
-    accentSecondary: '#9CAF94', // soft sage
+    // Accents — sage/earth palette
+    accent: '#728C7D',          // primary sage green
+    accentSecondary: '#B58D67', // tertiary warm brown
     // Backgrounds
-    background: '#FAFAF8',
-    surface: '#F2F0EC',
+    background: '#F4F1EA',      // neutral warm off-white
+    surface: '#EAE6DC',         // slightly deeper neutral
     surfaceElevated: '#FFFFFF',
     // User message bubble
-    userBubble: '#EDEAE5',
+    userBubble: '#E3DDD2',      // neutral tint
     // Text
-    textPrimary: '#2C2A26',
-    textSecondary: '#7A756D',
-    textTertiary: '#ADA69D',
+    textPrimary: '#1E2A22',     // very dark forest green
+    textSecondary: '#4A5E52',   // mid sage
+    textTertiary: '#8A9E92',    // light sage-gray
     // Verse chips
-    verseChipBorder: '#C4BAB0',
-    verseChipFill: '#F5F2EE',
+    verseChipBorder: '#C4A882', // muted warm brown
+    verseChipFill: '#F0E8DC',   // light tertiary tint
     // Input chips (scope, mode)
-    chipBackground: '#D9D2CB',
+    chipBackground: '#DDD8CE',  // warm neutral chip
     // Borders
-    border: '#E8E4DE',
+    border: '#D8D3C8',          // warm neutral border
     // Send button
-    sendButton: '#2C2A26',
+    sendButton: '#728C7D',      // primary sage
     // States
-    success: '#7A9E6F',
-    warning: '#C4A265',
+    success: '#A4B494',         // secondary sage
+    warning: '#B58D67',         // tertiary warm brown
     error: '#B5716D',
     // Lock state
-    locked: '#ADA69D',
+    locked: '#8A9E92',
     // Prayer mode tint
-    prayerTint: '#FAF6F0',
+    prayerTint: '#FAF8F3',
   },
   dark: {
-    accent: '#8C7E6F',
-    accentSecondary: '#9CAF94',
-    background: '#1A1A18',
-    surface: '#242422',
-    surfaceElevated: '#2E2C28',
-    userBubble: '#2E2C28',
-    textPrimary: '#E8E5E0',
-    textSecondary: '#9B958C',
-    textTertiary: '#5E5A54',
-    verseChipBorder: '#4A4540',
-    verseChipFill: '#2E2C28',
+    accent: '#A4B494',          // secondary sage on dark
+    accentSecondary: '#B58D67', // warm brown accent
+    background: '#141C18',      // very dark forest
+    surface: '#1C2820',
+    surfaceElevated: '#243028',
+    userBubble: '#243028',
+    textPrimary: '#F4F1EA',     // neutral warm off-white
+    textSecondary: '#8A9E92',
+    textTertiary: '#4A5E52',
+    verseChipBorder: '#344238',
+    verseChipFill: '#1C2820',
     // Input chips (scope, mode)
-    chipBackground: '#3C3934',
-    border: '#333330',
-    sendButton: '#E8E5E0',
-    success: '#7A9E6F',
-    warning: '#C4A265',
+    chipBackground: '#2A3830',
+    border: '#2E3C34',
+    sendButton: '#F4F1EA',
+    success: '#A4B494',
+    warning: '#B58D67',
     error: '#B5716D',
-    locked: '#5E5A54',
-    prayerTint: '#1E1C16',
+    locked: '#4A5E52',
+    prayerTint: '#0E1410',
   },
 };
 

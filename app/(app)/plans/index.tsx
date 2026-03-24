@@ -14,7 +14,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, Radius, Shadow } from '../../../components/ui/tokens';
 import { useSubscription } from '../../../hooks/useSubscription';
-import { useReadingPlans, ReadingPlan, PlanEnrollment, PlanRecommendation } from '../../../hooks/useReadingPlans';
+import { useReadingPlans, ReadingPlan, PlanEnrollment } from '../../../hooks/useReadingPlans';
 import { supabase } from '../../../lib/supabase';
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -36,51 +36,6 @@ function ProgressBar({ progress, color, trackColor }: {
   );
 }
 
-function RecommendationCard({
-  rec,
-  isPro,
-  colors,
-  onPress,
-}: {
-  rec: PlanRecommendation;
-  isPro: boolean;
-  colors: typeof Colors.light;
-  onPress: () => void;
-}) {
-  const isLocked = rec.plan.is_pro && !isPro;
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={onPress}
-      style={[
-        styles.recCard,
-        { backgroundColor: colors.surfaceElevated, borderColor: colors.border, ...Shadow.sm },
-      ]}
-    >
-      {isLocked && (
-        <View style={[styles.lockBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.lockIcon, { color: colors.locked }]}>🔒</Text>
-          <Text style={[styles.lockLabel, { color: colors.locked }]}>Pro</Text>
-        </View>
-      )}
-      <View style={[styles.recDurationBadge, { backgroundColor: colors.accentSecondary + '22', borderColor: colors.accentSecondary + '44' }]}>
-        <Text style={[styles.recDurationText, { color: colors.accentSecondary }]}>
-          {rec.plan.duration_days} days
-        </Text>
-      </View>
-      <Text style={[styles.recTitle, { color: isLocked ? colors.textTertiary : colors.textPrimary }]} numberOfLines={2}>
-        {rec.plan.title}
-      </Text>
-      <Text style={[styles.recReason, { color: colors.accent }]} numberOfLines={2}>
-        {rec.reason}
-      </Text>
-      <View style={[styles.recButton, { backgroundColor: isLocked ? colors.border : colors.accent }]}>
-        <Text style={styles.recButtonText}>{isLocked ? 'Unlock' : 'Start'}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
 
 function ActivePlanCard({
   plan,
@@ -95,7 +50,7 @@ function ActivePlanCard({
   colors: typeof Colors.light;
   onPress: () => void;
 }) {
-  const completedDays = Math.round(progress * plan.duration_days);
+  const pct = Math.round(Math.min(100, Math.max(0, progress * 100)));
   return (
     <TouchableOpacity
       activeOpacity={0.7}
@@ -106,18 +61,21 @@ function ActivePlanCard({
       ]}
     >
       <View style={styles.activeCardContent}>
-        <View style={styles.activeCardLeft}>
-          <Text style={[styles.activeCardTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-            {plan.title}
-          </Text>
-          <Text style={[styles.activeCardMeta, { color: colors.textSecondary }]}>
+        <Text style={[styles.activeCardTitle, { color: colors.textPrimary }]} numberOfLines={2}>
+          {plan.title}
+        </Text>
+        <Text style={[styles.activeCardSubtitle, { color: colors.textSecondary }]}>
+          {plan.duration_days} Days
+        </Text>
+        <View style={styles.activeCardStats}>
+          <Text style={[styles.activeCardStatText, { color: colors.textSecondary }]}>
             Day {enrollment.current_day} of {plan.duration_days}
           </Text>
-          <ProgressBar progress={progress} color={colors.accentSecondary} trackColor={colors.border} />
-          <Text style={[styles.activeCardProgress, { color: colors.textTertiary }]}>
-            {completedDays === 0 ? 'Just started' : `${completedDays} of ${plan.duration_days} days complete`}
+          <Text style={[styles.activeCardStatText, { color: colors.textSecondary }]}>
+            {pct}% Complete
           </Text>
         </View>
+        <ProgressBar progress={progress} color={colors.accent} trackColor={colors.border} />
         <View style={[styles.continueButton, { backgroundColor: colors.accent }]}>
           <Text style={styles.continueButtonText}>Continue</Text>
         </View>
@@ -160,55 +118,50 @@ function PlanListCard({
         </View>
       )}
       <View style={styles.planCardInner}>
-        <View style={styles.planCardHeader}>
-          <Text
-            style={[styles.planCardTitle, { color: isLocked ? colors.textTertiary : colors.textPrimary }]}
-            numberOfLines={2}
-          >
-            {plan.title}
-          </Text>
-          <View style={[styles.durationBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.durationText, { color: colors.textSecondary }]}>{plan.duration_days}d</Text>
-          </View>
-        </View>
+        <Text
+          style={[styles.planCardTitle, { color: isLocked ? colors.textTertiary : colors.textPrimary }]}
+          numberOfLines={2}
+        >
+          {plan.title}
+        </Text>
         <Text
           style={[styles.planCardDesc, { color: isLocked ? colors.textTertiary : colors.textSecondary }]}
           numberOfLines={2}
         >
           {plan.description}
         </Text>
-        <View style={styles.planCardFooter}>
-          <View style={styles.progressSection}>
-            <ProgressBar
-              progress={isLocked ? 0 : progress}
-              color={colors.accentSecondary}
-              trackColor={colors.border}
-            />
-            <Text style={[styles.progressLabel, { color: colors.textTertiary }]}>
-              {isLocked
-                ? 'Unlock with Pro'
-                : !hasStarted
-                ? 'Not started'
-                : progress >= 1
-                ? 'Complete!'
-                : `${Math.round(progress * 100)}% complete`}
+        <View style={styles.activeCardStats}>
+          <Text style={[styles.activeCardStatText, { color: isLocked ? colors.textTertiary : colors.textSecondary }]}>
+            {plan.duration_days} Days
+          </Text>
+          <Text style={[styles.activeCardStatText, { color: isLocked ? colors.textTertiary : colors.textSecondary }]}>
+            {isLocked
+              ? 'Pro'
+              : !hasStarted
+              ? 'Not started'
+              : progress >= 1
+              ? 'Complete'
+              : `${Math.round(progress * 100)}% complete`}
+          </Text>
+        </View>
+        <ProgressBar
+          progress={isLocked ? 0 : progress}
+          color={colors.accent}
+          trackColor={colors.border}
+        />
+        {!isLocked && (
+          <View style={[styles.continueButton, { backgroundColor: colors.accent }]}>
+            <Text style={styles.continueButtonText}>
+              {!hasStarted ? 'Start' : progress >= 1 ? 'Review' : 'Continue'}
             </Text>
           </View>
-          {!isLocked && (
-            <View style={[styles.actionButton, { backgroundColor: colors.accent }]}>
-              <Text style={styles.actionButtonText}>
-                {!hasStarted ? 'Start' : progress >= 1 ? 'Review' : 'Continue'}
-              </Text>
-            </View>
-          )}
-        </View>
+        )}
       </View>
     </TouchableOpacity>
   );
 }
 
 function BuildCustomPlanCard({
-  colors,
   onPress,
 }: {
   colors: typeof Colors.light;
@@ -216,23 +169,23 @@ function BuildCustomPlanCard({
 }) {
   return (
     <TouchableOpacity
-      activeOpacity={0.7}
+      activeOpacity={0.85}
       onPress={onPress}
-      style={[
-        styles.buildCard,
-        { backgroundColor: colors.surfaceElevated, borderColor: colors.border, ...Shadow.sm },
-      ]}
+      style={styles.buildCard}
     >
-      <View style={[styles.buildIconWrap, { backgroundColor: colors.accent + '18' }]}>
-        <Feather name="edit-3" size={18} color={colors.accent} />
-      </View>
-      <View style={styles.buildCardText}>
-        <Text style={[styles.buildCardTitle, { color: colors.textPrimary }]}>Build a custom plan</Text>
-        <Text style={[styles.buildCardDesc, { color: colors.textSecondary }]}>
-          Tell Pastor what you're walking through and he'll build a personalized day-by-day reading plan for you.
+      {/* Decorative circle */}
+      <View style={styles.buildCardCircle} pointerEvents="none" />
+      <View style={styles.buildCardInner}>
+        <Text style={styles.buildCardHeadline}>
+          A plan shaped{'\n'}around your life.
         </Text>
+        <Text style={styles.buildCardBody}>
+          Tell Pastor what you're walking through — grief, growth, doubt, or wonder — and he'll build a day-by-day Scripture plan just for you.
+        </Text>
+        <View style={styles.buildCardButton}>
+          <Text style={styles.buildCardButtonText}>Build a custom plan</Text>
+        </View>
       </View>
-      <Feather name="chevron-right" size={18} color={colors.textTertiary} />
     </TouchableOpacity>
   );
 }
@@ -251,7 +204,7 @@ export default function PlansScreen() {
     });
   }, []);
 
-  const { plans, enrollments, recommendations, isLoading, enroll, getEnrollmentForPlan, getProgress, reload } =
+  const { plans, enrollments, isLoading, getEnrollmentForPlan, getProgress, reload } =
     useReadingPlans(userId);
 
   useFocusEffect(
@@ -270,27 +223,6 @@ export default function PlansScreen() {
       router.push(`/plans/${plan.slug}`);
     },
     [isPro]
-  );
-
-  const handleRecommendationPress = useCallback(
-    async (rec: PlanRecommendation) => {
-      const isLocked = rec.plan.is_pro && !isPro;
-      if (isLocked) {
-        router.push('/paywall');
-        return;
-      }
-      // If not yet enrolled, enroll and navigate to day 1
-      const existing = getEnrollmentForPlan(rec.plan.id);
-      if (!existing) {
-        try {
-          await enroll(rec.plan.id);
-        } catch (e) {
-          console.error('Enroll error:', e);
-        }
-      }
-      router.push(`/plans/${rec.plan.slug}`);
-    },
-    [isPro, getEnrollmentForPlan, enroll]
   );
 
   // Active enrollments with their plans
@@ -343,39 +275,11 @@ export default function PlansScreen() {
               />
             </View>
 
-            {/* ── For You ── */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>For You</Text>
-                {recommendations.length > 0 && (
-                  <Text style={[styles.sectionSubtitle, { color: colors.textTertiary }]}>
-                    Chosen for your journey
-                  </Text>
-                )}
-              </View>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.recScroll}
-              >
-                {recommendations.map(rec => (
-                  <RecommendationCard
-                    key={rec.plan.id}
-                    rec={rec}
-                    isPro={isPro}
-                    colors={colors}
-                    onPress={() => handleRecommendationPress(rec)}
-                  />
-                ))}
-              </ScrollView>
-            </View>
-
             {/* ── Continue Reading ── */}
             {activePlans.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Continue Reading</Text>
+                  <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Current Journey</Text>
                 </View>
                 <View style={styles.activeList}>
                   {activePlans.map(({ plan, enrollment, progress }) => (
@@ -395,7 +299,7 @@ export default function PlansScreen() {
             {/* ── All Plans ── */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>All Plans</Text>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>All Plans</Text>
                 {!isPro && (
                   <TouchableOpacity onPress={() => router.push('/paywall')} activeOpacity={0.7}>
                     <Text style={[styles.upgradeLink, { color: colors.accent }]}>Unlock Pro →</Text>
@@ -457,183 +361,140 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
     fontWeight: '600',
   },
-  sectionSubtitle: {
-    fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.sm,
-    lineHeight: Typography.size.sm * 1.5,
-  },
   upgradeLink: {
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.size.sm,
     fontWeight: '500',
   },
-  // Recommendation horizontal cards
-  recScroll: { paddingHorizontal: Spacing.base, gap: Spacing.md },
-  recCard: {
-    width: 200,
-    borderRadius: Radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  recDurationBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-  },
-  recDurationText: {
-    fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.size.xs,
-    fontWeight: '500',
-  },
-  recTitle: {
+  sectionLabel: {
     fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.size.base,
-    fontWeight: '600',
-    lineHeight: Typography.size.base * 1.35,
-  },
-  recReason: {
-    fontFamily: Typography.fontFamily.regular,
     fontSize: Typography.size.xs,
-    lineHeight: Typography.size.xs * 1.6,
-    flex: 1,
-  },
-  recButton: {
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.sm,
-    marginTop: Spacing.xs,
-  },
-  recButtonText: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.size.sm,
     fontWeight: '600',
-    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
   },
-  // Build custom plan card
+  // Build custom plan hero card
   buildCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderRadius: Radius.xl,
+    backgroundColor: '#728C7D',
+    overflow: 'hidden',
+    minHeight: 280,
+  },
+  buildCardCircle: {
+    position: 'absolute',
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    bottom: -60,
+    right: -60,
+  },
+  buildCardInner: {
+    padding: Spacing.xl,
     gap: Spacing.md,
-    borderRadius: Radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.base,
-  },
-  buildIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  buildCardText: {
     flex: 1,
-    gap: 2,
+    justifyContent: 'flex-end',
   },
-  buildCardTitle: {
+  buildCardHeadline: {
+    fontFamily: Typography.fontFamily.serif,
+    fontSize: Typography.size['2xl'],
+    color: '#FFFFFF',
+    fontStyle: 'italic',
+    lineHeight: Typography.size['2xl'] * 1.25,
+    marginBottom: Spacing.xs,
+  },
+  buildCardBody: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.size.base,
+    color: 'rgba(255,255,255,0.82)',
+    lineHeight: Typography.size.base * 1.55,
+  },
+  buildCardButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  buildCardButtonText: {
     fontFamily: Typography.fontFamily.semibold,
     fontSize: Typography.size.base,
     fontWeight: '600',
-  },
-  buildCardDesc: {
-    fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.sm,
+    color: '#1E2A22',
   },
   // Active plans
   activeList: { paddingHorizontal: Spacing.base, gap: Spacing.md },
   activeCard: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
   activeCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.base,
-    gap: Spacing.md,
+    padding: Spacing.xl,
+    gap: Spacing.sm,
   },
-  activeCardLeft: { flex: 1, gap: 4 },
   activeCardTitle: {
-    fontFamily: Typography.fontFamily.semibold,
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.size.xl,
+    fontWeight: '700',
+    lineHeight: Typography.size.xl * 1.2,
+  },
+  activeCardSubtitle: {
+    fontFamily: Typography.fontFamily.serif,
     fontSize: Typography.size.base,
-    fontWeight: '600',
+    fontStyle: 'italic',
+    marginBottom: Spacing.xs,
   },
-  activeCardMeta: {
-    fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.sm,
+  activeCardStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 2,
   },
-  activeCardProgress: {
-    fontFamily: Typography.fontFamily.regular,
+  activeCardStatText: {
+    fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.size.xs,
-    marginTop: 2,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   continueButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.sm,
+    alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.full,
+    marginTop: Spacing.md,
   },
   continueButtonText: {
     fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.base,
     fontWeight: '600',
     color: '#FFFFFF',
   },
   // All plans list
   planList: { paddingHorizontal: Spacing.base, gap: Spacing.md },
   planCard: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
-  planCardInner: { padding: Spacing.base, gap: Spacing.sm },
-  planCardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
+  planCardInner: { padding: Spacing.xl, gap: Spacing.sm },
   planCardTitle: {
-    flex: 1,
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.size.base,
-    fontWeight: '600',
-    lineHeight: Typography.size.base * 1.4,
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.size.xl,
+    fontWeight: '700',
+    lineHeight: Typography.size.xl * 1.2,
   },
   planCardDesc: {
-    fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.sm,
-    lineHeight: Typography.size.sm * 1.6,
+    fontFamily: Typography.fontFamily.serif,
+    fontStyle: 'italic',
+    fontSize: Typography.size.base,
+    lineHeight: Typography.size.base * 1.5,
+    marginBottom: Spacing.xs,
   },
-  planCardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    marginTop: Spacing.xs,
-  },
-  durationBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-  },
-  durationText: {
-    fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.size.xs,
-    fontWeight: '500',
-  },
-  progressSection: { flex: 1, gap: 4 },
-  progressTrack: { height: 4, borderRadius: Radius.full, overflow: 'hidden' },
+  progressTrack: { height: 6, borderRadius: Radius.full, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: Radius.full },
-  progressLabel: { fontFamily: Typography.fontFamily.regular, fontSize: Typography.size.xs },
-  actionButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.sm,
-  },
-  actionButtonText: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.size.sm,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
   lockBadge: {
     position: 'absolute',
     top: Spacing.sm,
