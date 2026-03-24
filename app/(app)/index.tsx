@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, Radius } from '../../components/ui/tokens';
 import MessageList from '../../components/chat/MessageList';
 import ChatInput from '../../components/chat/ChatInput';
@@ -339,32 +339,16 @@ export default function ChatScreen() {
         <Text style={[styles.wordmark, { color: colors.textPrimary }]}>
         </Text>
 
-        {/* Right — new chat + overflow */}
-        <View style={styles.headerRightGroup}>
-          {/* New chat */}
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={handleNewChat}
-            accessibilityRole="button"
-            accessibilityLabel="New conversation"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="plus-square" size={22} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          {/* Overflow */}
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() =>
-              Alert.alert('Menu', 'More options coming soon.')
-            }
-            accessibilityRole="button"
-            accessibilityLabel="More options"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="more-horizontal" size={22} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
+        {/* Right — new chat */}
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={handleNewChat}
+          accessibilityRole="button"
+          accessibilityLabel="New conversation"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="add-circle" size={30} color={colors.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       {/* ------------------------------------------------------------------ */}
@@ -515,7 +499,7 @@ export default function ChatScreen() {
       <Modal
         visible={modePickerVisible}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setModePickerVisible(false)}
       >
         <TouchableOpacity
@@ -525,67 +509,73 @@ export default function ChatScreen() {
           accessibilityLabel="Close mode picker"
         >
           <View
-            style={[
-              styles.modePickerSheet,
-              {
-                backgroundColor: colors.surfaceElevated,
-                borderColor: colors.border,
-              },
-            ]}
+            style={[styles.modePickerSheet, { backgroundColor: colors.background }]}
+            onStartShouldSetResponder={() => true}
           >
-            <Text style={[styles.modePickerTitle, { color: colors.textSecondary }]}>
-              Chat mode
+            <Text style={[styles.modePickerTitle, { color: colors.accent }]}>
+              Choose Your Mode
             </Text>
-            {CHAT_MODES.map((mode, index) => {
-              const isSelected = chatMode === mode.id;
-              return (
-                <TouchableOpacity
-                  key={mode.id}
-                  style={[
-                    styles.modePickerOption,
-                    { borderTopColor: colors.border },
-                    index === 0 && { borderTopWidth: 0 },
-                    isSelected && { backgroundColor: colors.surface },
-                  ]}
-                  onPress={() => {
-                    setChatMode(mode.id);
-                    setModePickerVisible(false);
-                  }}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: isSelected }}
-                  accessibilityLabel={mode.label}
-                >
-                  <View style={styles.modePickerOptionIcon}>
-                    <Feather
-                      name={mode.icon as any}
-                      size={16}
-                      color={isSelected ? colors.accent : colors.textSecondary}
-                    />
-                  </View>
-                  <View style={styles.modePickerOptionText}>
-                    <Text
+            <Text style={[styles.modePickerSubtitle, { color: colors.textSecondary }]}>
+              Select the atmosphere for your sanctuary today.
+            </Text>
+            <View style={styles.modePickerList}>
+              {CHAT_MODES.map((mode) => {
+                const isSelected = chatMode === mode.id;
+                const iconColor = isSelected ? '#FFFFFF' : colors.textSecondary;
+                return (
+                  <TouchableOpacity
+                    key={mode.id}
+                    style={[
+                      styles.modePickerOption,
+                      isSelected && { backgroundColor: colors.surfaceContainerHigh },
+                    ]}
+                    onPress={() => {
+                      setChatMode(mode.id);
+                      setModePickerVisible(false);
+                    }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: isSelected }}
+                    accessibilityLabel={`${mode.label} Mode`}
+                  >
+                    <View
                       style={[
-                        styles.modePickerLabel,
-                        {
-                          color: isSelected ? colors.accent : colors.textPrimary,
-                          fontFamily: isSelected
-                            ? Typography.fontFamily.medium
-                            : Typography.fontFamily.regular,
-                        },
+                        styles.modeIconCircle,
+                        { backgroundColor: isSelected ? colors.accent : colors.surfaceContainerHigh },
                       ]}
                     >
-                      {mode.label}
-                    </Text>
-                    <Text style={[styles.modePickerDescription, { color: colors.textTertiary }]}>
-                      {mode.description}
-                    </Text>
-                  </View>
-                  {isSelected && (
-                    <Feather name="check" size={16} color={colors.accent} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+                      {mode.id === 'prayer' ? (
+                        <Ionicons name="sparkles-outline" size={20} color={iconColor} />
+                      ) : mode.id === 'devotional' ? (
+                        <Ionicons name="sunny-outline" size={20} color={iconColor} />
+                      ) : mode.id === 'standard' ? (
+                        <Ionicons name="chatbubbles-outline" size={20} color={iconColor} />
+                      ) : (
+                        <Feather name={mode.icon as any} size={20} color={iconColor} />
+                      )}
+                    </View>
+                    <View style={styles.modePickerOptionText}>
+                      <Text
+                        style={[
+                          styles.modePickerLabel,
+                          {
+                            color: colors.textPrimary,
+                            fontFamily: Typography.fontFamily.semibold,
+                          },
+                        ]}
+                      >
+                        {mode.label} Mode
+                      </Text>
+                      <Text style={[styles.modePickerDescription, { color: colors.textSecondary }]}>
+                        {mode.description}
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <Feather name="check" size={20} color={colors.accent} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -662,11 +652,6 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
   },
   headerLeftGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  headerRightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
@@ -749,50 +734,58 @@ const styles = StyleSheet.create({
   // Mode picker modal
   modePickerBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'flex-end',
-    alignItems: 'flex-start',
-    paddingBottom: 92,
-    paddingLeft: Spacing.base,
   },
   modePickerSheet: {
-    borderRadius: Radius.lg,
-    overflow: 'hidden',
-    minWidth: 220,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing['2xl'],
+    paddingBottom: Spacing['3xl'],
     shadowColor: '#1C1C18',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.05,
-    shadowRadius: 32,
-    elevation: 8,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 16,
   },
   modePickerTitle: {
+    fontFamily: Typography.fontFamily.serifBold,
+    fontSize: Typography.size['2xl'],
+    marginBottom: Spacing.xs,
+  },
+  modePickerSubtitle: {
     fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    paddingHorizontal: Spacing.base,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    fontSize: Typography.size.base,
+    lineHeight: Typography.size.base * 1.5,
+    marginBottom: Spacing.xl,
+  },
+  modePickerList: {
+    gap: Spacing.sm,
   },
   modePickerOption: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    gap: Spacing.sm,
+    paddingVertical: Spacing.base,
+    borderRadius: Radius.xl,
+    gap: Spacing.base,
   },
-  modePickerOptionIcon: {
-    width: 24,
+  modeIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   modePickerOptionText: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   modePickerLabel: {
-    fontSize: Typography.size.base,
+    fontSize: Typography.size.md,
   },
   modePickerDescription: {
-    fontSize: Typography.size.xs,
+    fontSize: Typography.size.sm,
   },
 });

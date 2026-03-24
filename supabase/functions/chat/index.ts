@@ -67,6 +67,7 @@ function buildSystemPrompt(
   isPrayerMode: boolean,
   translation: string,
   journeyContext: string,
+  burdens: string,
   passages: string,
   chatScope?: string,
 ): string {
@@ -80,16 +81,17 @@ CONSTRAINTS:
 - Decline off-topic requests gracefully
 ${isPrayerMode ? "- You are in PRAYER MODE: respond as a guided prayer, addressing God, incorporating the user's situation and scripture" : ''}
 
-USER CONTEXT (from their spiritual journey):
-${journeyContext || 'No prior context available — this may be a new user.'}
+USER CONTEXT (recurring spiritual themes and books):
+${journeyContext || 'No prior context — this may be a new user.'}
+${burdens ? `\nCURRENT BURDENS (life circumstances and active prayer requests — tie scripture directly to these):\n${burdens}` : ''}
 
 PERSONALIZATION INSTRUCTIONS:
-${journeyContext
-  ? `- This is a returning user. You know their recurring themes and life circumstances from above.
-- When their current message connects to a theme they have returned to multiple times (high mention_count), acknowledge that continuity naturally — e.g. "This seems to be something you've been sitting with for a while..." — without being clinical or listing their data back at them.
-- Frame scripture and guidance in light of their known life context where it genuinely fits. Do not force it.
-- For ongoing prayer_topics, you may gently reference these as burdens you are already aware of and praying with them through.
-- If they ask what you know about them, summarize their journey themes warmly and offer to go deeper on any of them.`
+${journeyContext || burdens
+  ? `- This is a returning user. You have specific knowledge of their life and spiritual history above — use it actively.
+- CURRENT BURDENS are your highest-priority context. When a retrieved passage connects to a named burden, make that connection explicit and concrete — e.g. "Given that you're walking through [X], this verse speaks directly to that because..." A generic application when a specific one is possible is a missed opportunity.
+- For prayer topics, treat them as ongoing intercessions you are already carrying with this person. Reference them by name when the passage speaks to them.
+- When a theme has a high mention_count, acknowledge the continuity naturally — e.g. "This is something you've been sitting with for a while..." — without listing their data back at them clinically.
+- If they ask what you know about them, summarize their journey warmly and offer to go deeper on any of it.`
   : `- This appears to be a new user. Welcome them warmly and invite them to share what is on their heart.`}
 
 RETRIEVED BIBLE PASSAGES:
@@ -100,18 +102,32 @@ ${chatScope === 'reading_plan' ? READING_PLAN_DISCOVERY_PROMPT : ''}`
 }
 
 function formatJourneyContext(entities: JourneyEntity[]): string {
-  if (!entities.length) return ''
-
   const grouped: Record<string, string[]> = {}
   for (const entity of entities) {
+    // life_context and prayer_topic surface separately in CURRENT BURDENS
+    if (entity.entity_type === 'life_context' || entity.entity_type === 'prayer_topic') continue
     if (!grouped[entity.entity_type]) grouped[entity.entity_type] = []
     grouped[entity.entity_type].push(
       `${entity.entity_key} (mentioned ${entity.mention_count}x)`,
     )
   }
 
-  return Object.entries(grouped)
+  const entries = Object.entries(grouped)
+  if (!entries.length) return ''
+  return entries
     .map(([type, items]) => `${type.toUpperCase()}: ${items.join(', ')}`)
+    .join('\n')
+}
+
+function formatBurdens(entities: JourneyEntity[]): string {
+  const burdens = entities.filter(
+    (e) => e.entity_type === 'life_context' || e.entity_type === 'prayer_topic',
+  )
+  if (!burdens.length) return ''
+  return burdens
+    .map((e) =>
+      `- ${e.entity_key} (${e.entity_type === 'prayer_topic' ? 'prayer request' : 'life circumstance'}, mentioned ${e.mention_count}x)`,
+    )
     .join('\n')
 }
 
@@ -258,11 +274,13 @@ Deno.serve(async (req: Request) => {
 
     // 4. Build system prompt
     const journeyContext = formatJourneyContext(journeyEntities ?? [])
+    const burdens = formatBurdens(journeyEntities ?? [])
     const passagesText = formatPassages(passages)
     const systemPrompt = buildSystemPrompt(
       is_prayer_mode,
       translation,
       journeyContext,
+      burdens,
       passagesText,
       chat_scope,
     )

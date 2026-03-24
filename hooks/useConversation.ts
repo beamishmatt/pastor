@@ -10,10 +10,10 @@ export const CHAT_MODES: Array<{
   icon: string;
   description: string;
 }> = [
-  { id: 'standard',   label: 'Standard',   icon: 'message-circle', description: 'General conversation' },
-  { id: 'prayer',     label: 'Prayer',      icon: 'heart',          description: 'Guided prayer & reflection' },
-  { id: 'study',      label: 'Study',       icon: 'book-open',      description: 'Deep biblical study' },
-  { id: 'devotional', label: 'Devotional',  icon: 'sun',            description: 'Daily devotions & quiet time' },
+  { id: 'standard',   label: 'Standard',   icon: 'message-square', description: 'Balanced conversation and insight' },
+  { id: 'prayer',     label: 'Prayer',      icon: 'sparkles',       description: 'Intercessory and meditative focus' },
+  { id: 'study',      label: 'Study',       icon: 'book-open',      description: 'Deep theological and linguistic depth' },
+  { id: 'devotional', label: 'Devotional',  icon: 'sunny',          description: 'Daily encouragement and heart work' },
 ];
 
 export interface CitedVerse {

@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, Radius, Shadow } from '../../../../components/ui/tokens';
 import { getPlanTheme } from '../../../../components/ui/planThemes';
@@ -124,8 +124,14 @@ export default function PlanDetailScreen() {
     });
   }, []);
 
-  const { plans, enroll, deletePlan, getEnrollmentForPlan, getCompletedDays, getProgress, isLoading } =
+  const { plans, enroll, deletePlan, getEnrollmentForPlan, getCompletedDays, getProgress, isLoading, reload } =
     useReadingPlans(userId);
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload])
+  );
 
   const plan = plans.find(p => p.slug === slug);
 
@@ -390,6 +396,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.base,
   },
   heroImage: {
+    width: '100%',
     height: 200,
     borderRadius: Radius.xl,
     overflow: 'hidden',
@@ -453,7 +460,7 @@ const styles = StyleSheet.create({
   progressCard: {
     borderRadius: Radius.xl,
     padding: Spacing.base,
-    gap: Spacing.sm,
+    gap: Spacing.lg,
     ...Shadow.sm,
   },
   progressStats: {
