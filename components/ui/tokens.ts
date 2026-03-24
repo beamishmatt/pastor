@@ -2,54 +2,58 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    // Accents — sage/earth palette
-    accent: '#728C7D',          // primary sage green
-    accentSecondary: '#B58D67', // tertiary warm brown
-    // Backgrounds
-    background: '#F4F1EA',      // neutral warm off-white
-    surface: '#EAE6DC',         // slightly deeper neutral
-    surfaceElevated: '#FFFFFF',
+    // Primary accent — sage green
+    accent: '#4B6456',
+    accentSecondary: '#8AA495',
+    // Surface hierarchy — "Paper on Paper"
+    background: '#FCF9F2',            // base canvas
+    surface: '#F6F3EC',               // content blocks
+    surfaceContainer: '#F0EDE6',      // grouped sections
+    surfaceContainerHigh: '#EAE7E0',  // interactive cards
+    surfaceContainerHighest: '#E5E2DB', // primary action cards
+    surfaceElevated: '#FFFFFF',       // lifted / nesting
     // User message bubble
-    userBubble: '#E3DDD2',      // neutral tint
+    userBubble: '#EAE7E0',
     // Text
-    textPrimary: '#1E2A22',     // very dark forest green
-    textSecondary: '#4A5E52',   // mid sage
-    textTertiary: '#8A9E92',    // light sage-gray
+    textPrimary: '#1C1C18',           // on-surface (warm near-black)
+    textSecondary: '#4A5E52',
+    textTertiary: '#8A9A8E',
     // Verse chips
-    verseChipBorder: '#C4A882', // muted warm brown
-    verseChipFill: '#F0E8DC',   // light tertiary tint
-    // Input chips (scope, mode)
-    chipBackground: '#DDD8CE',  // warm neutral chip
-    // Borders
-    border: '#D8D3C8',          // warm neutral border
+    verseChipBorder: '#C8B89A',
+    verseChipFill: '#F6F3EC',
+    // Input chips
+    chipBackground: '#E5E2DB',
+    // Tonal border (ghost — 15% opacity applied at usage site)
+    border: '#C8C4BC',
     // Send button
-    sendButton: '#728C7D',      // primary sage
+    sendButton: '#4B6456',
     // States
-    success: '#A4B494',         // secondary sage
-    warning: '#B58D67',         // tertiary warm brown
+    success: '#8AA495',
+    warning: '#B58D67',
     error: '#B5716D',
-    // Lock state
-    locked: '#8A9E92',
-    // Prayer mode tint
+    locked: '#8A9A8E',
+    // Prayer / overlay tint
     prayerTint: '#FAF8F3',
   },
   dark: {
-    accent: '#A4B494',          // secondary sage on dark
-    accentSecondary: '#B58D67', // warm brown accent
-    background: '#141C18',      // very dark forest
+    accent: '#8AA495',
+    accentSecondary: '#B58D67',
+    background: '#141C18',
     surface: '#1C2820',
+    surfaceContainer: '#223028',
+    surfaceContainerHigh: '#2A3830',
+    surfaceContainerHighest: '#324038',
     surfaceElevated: '#243028',
-    userBubble: '#243028',
-    textPrimary: '#F4F1EA',     // neutral warm off-white
-    textSecondary: '#8A9E92',
+    userBubble: '#2A3830',
+    textPrimary: '#F0EDE6',
+    textSecondary: '#8A9A8E',
     textTertiary: '#4A5E52',
     verseChipBorder: '#344238',
     verseChipFill: '#1C2820',
-    // Input chips (scope, mode)
     chipBackground: '#2A3830',
     border: '#2E3C34',
-    sendButton: '#F4F1EA',
-    success: '#A4B494',
+    sendButton: '#F0EDE6',
+    success: '#8AA495',
     warning: '#B58D67',
     error: '#B5716D',
     locked: '#4A5E52',
@@ -58,15 +62,18 @@ export const Colors = {
 };
 
 export const Typography = {
-  // SF Pro weights (system font)
+  // Plus Jakarta Sans (body/UI) + Noto Serif (display/scripture)
   fontFamily: {
-    regular: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    medium: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-    semibold: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
-    bold: Platform.OS === 'ios' ? 'System' : 'sans-serif-bold',
-    // New York serif for scripture display
-    serif: Platform.OS === 'ios' ? 'NewYorkSmall-Regular' : 'serif',
-    serifMedium: Platform.OS === 'ios' ? 'NewYorkSmall-Medium' : 'serif',
+    regular: 'PlusJakartaSans_400Regular',
+    medium: 'PlusJakartaSans_500Medium',
+    semibold: 'PlusJakartaSans_600SemiBold',
+    bold: 'PlusJakartaSans_700Bold',
+    serif: 'NotoSerif_400Regular',
+    serifMedium: 'NotoSerif_500Medium',
+    serifSemiBold: 'NotoSerif_600SemiBold',
+    serifBold: 'NotoSerif_700Bold',
+    serifItalic: 'NotoSerif_400Regular_Italic',
+    serifBoldItalic: 'NotoSerif_700Bold_Italic',
   },
   size: {
     xs: 11,
@@ -107,17 +114,17 @@ export const Radius = {
 
 export const Shadow = {
   sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
+    shadowColor: '#1C1C18',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
     elevation: 2,
   },
   md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowColor: '#1C1C18',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.05,
+    shadowRadius: 32,
     elevation: 4,
   },
 };

@@ -264,7 +264,6 @@ export default function ChatScreen() {
         onBiblePress={() => router.push('/bible')}
         onBookmarksPress={() => router.push('/bookmarks')}
         onPlansPress={() => router.push('/plans')}
-        onDevotionalPress={() => Alert.alert('Devotional', 'Coming soon.')}
         onSettingsPress={() =>
           Alert.alert('Settings', 'What would you like to do?', [
             { text: 'Cancel', style: 'cancel' },
@@ -404,7 +403,7 @@ export default function ChatScreen() {
                   }
                 }}
                 activeOpacity={0.7}
-                style={[styles.promptChip, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[styles.promptChip, { backgroundColor: colors.surfaceContainerHigh }]}
               >
                 <Text style={[styles.promptTitle, { color: colors.textPrimary }]}>
                   {item.title}
@@ -652,7 +651,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   wordmark: {
     flex: 1,
@@ -701,7 +699,6 @@ const styles = StyleSheet.create({
   },
   pickerSheet: {
     borderRadius: Radius.lg,
-    borderWidth: 1,
     overflow: 'hidden',
     minWidth: 140,
   },
@@ -720,7 +717,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   pickerOptionText: {
     fontSize: Typography.size.base,
@@ -734,7 +730,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   promptChip: {
-    borderWidth: 1,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
@@ -762,13 +757,12 @@ const styles = StyleSheet.create({
   },
   modePickerSheet: {
     borderRadius: Radius.lg,
-    borderWidth: 1,
     overflow: 'hidden',
     minWidth: 220,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
+    shadowColor: '#1C1C18',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.05,
+    shadowRadius: 32,
     elevation: 8,
   },
   modePickerTitle: {
@@ -785,7 +779,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
     gap: Spacing.sm,
   },
   modePickerOptionIcon: {

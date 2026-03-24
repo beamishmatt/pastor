@@ -57,7 +57,7 @@ function ActivePlanCard({
       onPress={onPress}
       style={[
         styles.activeCard,
-        { backgroundColor: colors.surfaceElevated, borderColor: colors.border, ...Shadow.sm },
+        { backgroundColor: colors.surfaceElevated, ...Shadow.sm },
       ]}
     >
       <View style={styles.activeCardContent}>
@@ -108,11 +108,11 @@ function PlanListCard({
       onPress={onPress}
       style={[
         styles.planCard,
-        { backgroundColor: colors.surfaceElevated, borderColor: colors.border, ...Shadow.sm },
+        { backgroundColor: colors.surfaceElevated, ...Shadow.sm },
       ]}
     >
       {isLocked && (
-        <View style={[styles.lockBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.lockBadge, { backgroundColor: colors.surfaceContainerHighest }]}>
           <Text style={[styles.lockIcon, { color: colors.locked }]}>🔒</Text>
           <Text style={[styles.lockLabel, { color: colors.locked }]}>Pro</Text>
         </View>
@@ -340,7 +340,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backButton: { width: 40, alignItems: 'flex-start', justifyContent: 'center' },
   backArrow: { fontSize: Typography.size.lg, fontFamily: Typography.fontFamily.regular },
@@ -376,7 +375,7 @@ const styles = StyleSheet.create({
   // Build custom plan hero card
   buildCard: {
     borderRadius: Radius.xl,
-    backgroundColor: '#728C7D',
+    backgroundColor: '#4B6456',
     overflow: 'hidden',
     minHeight: 280,
   },
@@ -385,10 +384,9 @@ const styles = StyleSheet.create({
     width: 260,
     height: 260,
     borderRadius: 130,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
     bottom: -60,
     right: -60,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   buildCardInner: {
     padding: Spacing.xl,
@@ -397,10 +395,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   buildCardHeadline: {
-    fontFamily: Typography.fontFamily.serif,
+    fontFamily: Typography.fontFamily.serifItalic,
     fontSize: Typography.size['2xl'],
     color: '#FFFFFF',
-    fontStyle: 'italic',
     lineHeight: Typography.size['2xl'] * 1.25,
     marginBottom: Spacing.xs,
   },
@@ -428,7 +425,6 @@ const styles = StyleSheet.create({
   activeList: { paddingHorizontal: Spacing.base, gap: Spacing.md },
   activeCard: {
     borderRadius: Radius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
   activeCardContent: {
@@ -442,9 +438,8 @@ const styles = StyleSheet.create({
     lineHeight: Typography.size.xl * 1.2,
   },
   activeCardSubtitle: {
-    fontFamily: Typography.fontFamily.serif,
+    fontFamily: Typography.fontFamily.serifItalic,
     fontSize: Typography.size.base,
-    fontStyle: 'italic',
     marginBottom: Spacing.xs,
   },
   activeCardStats: {
@@ -476,7 +471,6 @@ const styles = StyleSheet.create({
   planList: { paddingHorizontal: Spacing.base, gap: Spacing.md },
   planCard: {
     borderRadius: Radius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
   planCardInner: { padding: Spacing.xl, gap: Spacing.sm },
@@ -487,8 +481,7 @@ const styles = StyleSheet.create({
     lineHeight: Typography.size.xl * 1.2,
   },
   planCardDesc: {
-    fontFamily: Typography.fontFamily.serif,
-    fontStyle: 'italic',
+    fontFamily: Typography.fontFamily.serifItalic,
     fontSize: Typography.size.base,
     lineHeight: Typography.size.base * 1.5,
     marginBottom: Spacing.xs,
@@ -504,7 +497,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: Radius.full,
-    borderWidth: 1,
     gap: 4,
     zIndex: 1,
   },

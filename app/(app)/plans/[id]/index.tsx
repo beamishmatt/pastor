@@ -70,7 +70,7 @@ function ProgressCard({
 }) {
   const pct = Math.round(Math.min(100, Math.max(0, progress * 100)));
   return (
-    <View style={[styles.progressCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View style={[styles.progressCard, { backgroundColor: colors.surfaceContainerHighest }]}>
       <View style={styles.progressStats}>
         <Text style={[styles.progressStatText, { color: colors.textSecondary }]}>{pct}% complete</Text>
         <Text style={[styles.progressStatText, { color: colors.textSecondary }]}>
@@ -316,8 +316,7 @@ export default function PlanDetailScreen() {
                     onPress={() => isAccessible && handleDayPress(reading.day_number)}
                     style={[
                       styles.dayRow,
-                      { borderBottomColor: colors.border },
-                      index === 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+                      index < readings.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
                     ]}
                   >
                     {/* Check circle */}
@@ -444,8 +443,7 @@ const styles = StyleSheet.create({
     lineHeight: Typography.size['2xl'] * 1.2,
   },
   planDesc: {
-    fontFamily: Typography.fontFamily.serif,
-    fontStyle: 'italic',
+    fontFamily: Typography.fontFamily.serifItalic,
     fontSize: Typography.size.base,
     lineHeight: Typography.size.base * 1.65,
     marginBottom: Spacing.sm,
@@ -454,7 +452,6 @@ const styles = StyleSheet.create({
   // Progress card
   progressCard: {
     borderRadius: Radius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
     padding: Spacing.base,
     gap: Spacing.sm,
     ...Shadow.sm,
@@ -533,14 +530,14 @@ const styles = StyleSheet.create({
   },
   scheduleDivider: {
     flex: 1,
-    height: StyleSheet.hairlineWidth,
+    height: 1,
+    opacity: 0.4,
   },
   dayRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.md,
     gap: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   dayCheck: {
     width: 28,

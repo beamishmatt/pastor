@@ -2,11 +2,9 @@ import React from 'react';
 import {
   TouchableOpacity,
   Text,
-  View,
   StyleSheet,
   useColorScheme,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Colors, Typography, Spacing, Radius } from '../ui/tokens';
 
@@ -36,12 +34,6 @@ const VerseChip: React.FC<VerseChipProps> = ({ reference, onPress }) => {
         },
       ]}
     >
-      <Feather
-        name="book-open"
-        size={12}
-        color={colors.textSecondary}
-        style={styles.icon}
-      />
       <Text style={[styles.label, { color: colors.textSecondary }]}>
         {reference}
       </Text>
@@ -59,9 +51,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     marginRight: Spacing.xs,
     marginBottom: Spacing.xs,
-  },
-  icon: {
-    marginRight: Spacing.xs,
   },
   label: {
     fontFamily: Typography.fontFamily.medium,

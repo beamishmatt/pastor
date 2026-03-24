@@ -32,7 +32,6 @@ interface SideSheetProps {
   onBiblePress: () => void;
   onBookmarksPress: () => void;
   onPlansPress: () => void;
-  onDevotionalPress: () => void;
   onSettingsPress: () => void;
   isPro: boolean;
   userName?: string;
@@ -109,7 +108,6 @@ export function SideSheet({
   onBiblePress,
   onBookmarksPress,
   onPlansPress,
-  onDevotionalPress,
   onSettingsPress,
   isPro,
   userName,
@@ -227,15 +225,6 @@ export function SideSheet({
           onPress={() => { onPlansPress(); onClose(); }}
           iconColor={textSecondary}
         />
-        <NavRow
-          icon="sun"
-          label="Daily Devotional"
-          onPress={() => { if (isPro) { onDevotionalPress(); onClose(); } }}
-          iconColor={textSecondary}
-          lockOverlay={!isPro}
-          lockColor={colors.locked}
-        />
-
         {/* 3. Divider */}
         <View style={[styles.divider, { backgroundColor: borderColor }]} />
 

@@ -2,7 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, useColorScheme } from 'react-native';
 import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useFonts, AlumniSans_600SemiBold } from '@expo-google-fonts/alumni-sans';
+import {
+  useFonts,
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import {
+  NotoSerif_400Regular,
+  NotoSerif_400Regular_Italic,
+  NotoSerif_500Medium,
+  NotoSerif_600SemiBold,
+  NotoSerif_700Bold,
+  NotoSerif_700Bold_Italic,
+} from '@expo-google-fonts/noto-serif';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Colors } from '../components/ui/tokens';
@@ -18,7 +32,18 @@ export default function RootLayout() {
   const colors = Colors[colorScheme];
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [dataReady, setDataReady] = useState(false);
-  const [fontsLoaded] = useFonts({ AlumniSans_600SemiBold });
+  const [fontsLoaded] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    NotoSerif_400Regular,
+    NotoSerif_400Regular_Italic,
+    NotoSerif_500Medium,
+    NotoSerif_600SemiBold,
+    NotoSerif_700Bold,
+    NotoSerif_700Bold_Italic,
+  });
 
   useEffect(() => {
     // Resolve auth + seed local Bible DB in parallel before hiding splash
