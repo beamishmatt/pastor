@@ -335,38 +335,6 @@ export default function ChapterScreen() {
         />
       )}
 
-      {/* Bottom navigation bar */}
-      <View
-        style={[
-          styles.bottomBar,
-          {
-            backgroundColor: colors.surfaceElevated,
-            borderTopColor: colors.border,
-            ...Shadow.sm,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={handlePrevChapter}
-          activeOpacity={0.6}
-          style={styles.bottomNavButton}
-          disabled={isLoading}
-        >
-          <Text style={[styles.bottomNavText, { color: colors.accent }]}>← Prev Chapter</Text>
-        </TouchableOpacity>
-
-        <View style={[styles.bottomDivider, { backgroundColor: colors.border }]} />
-
-        <TouchableOpacity
-          onPress={handleNextChapter}
-          activeOpacity={0.6}
-          style={styles.bottomNavButton}
-          disabled={isLoading}
-        >
-          <Text style={[styles.bottomNavText, { color: colors.accent }]}>Next Chapter →</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Verse action tooltip */}
       <VerseActionTooltip
         visible={menuVisible}
@@ -490,25 +458,5 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.base,
     textAlign: 'center',
     lineHeight: Typography.size.base * Typography.lineHeight.relaxed,
-  },
-  bottomBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingBottom: Platform.OS === 'ios' ? 0 : Spacing.sm,
-  },
-  bottomNavButton: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.base,
-  },
-  bottomNavText: {
-    fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.size.base,
-    fontWeight: '500',
-  },
-  bottomDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 24,
   },
 });

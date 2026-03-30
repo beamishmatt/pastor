@@ -22,6 +22,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Colors } from '../components/ui/tokens';
 import { supabase } from '../lib/supabase';
 import { seedBibleIfNeeded } from '../lib/bible-seed';
+import { configureRevenueCat } from '../lib/revenuecat';
 import type { Session } from '@supabase/supabase-js';
 
 // Keep the splash screen visible while we set up the app
@@ -46,6 +47,8 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    configureRevenueCat();
+
     // Resolve auth + seed local Bible DB in parallel before hiding splash
     Promise.all([
       supabase.auth.getSession(),

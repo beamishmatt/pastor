@@ -13,12 +13,6 @@ export const TRANSLATIONS_COMING_SOON = ['ESV', 'NIV', 'NASB'] as const;
 
 export const DEFAULT_TRANSLATION = 'KJV';
 
-export const ELEVENLABS_VOICES = {
-  ADAM: 'pNInz6obpgDQGcFmaJgB',
-  DANIEL: 'onwK4e9ZLuTAKqWW03F9',
-  CALLUM: 'N2lVS1w4EtoT3dr4eOWO',
-} as const;
-
 export const STORAGE_KEYS = {
   translation: 'pastor_translation',
   faithBackground: 'pastor_faith_bg',

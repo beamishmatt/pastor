@@ -1,30 +1,25 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Dimensions,
-  FlatList,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  SafeAreaView,
-  StatusBar,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  ViewToken,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, Radius } from '../../components/ui/tokens';
 
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
 
-type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
-
 interface Slide {
   id: string;
-  icon: FeatherIconName;
+  image: ReturnType<typeof require>;
   headline: string;
   body: string;
 }
@@ -32,29 +27,26 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     id: '1',
-    icon: 'message-circle',
-    headline: 'Ask anything. Get scripture.',
-    body:
-      'Every answer is grounded in God\'s Word. Ask your deepest questions and receive responses rooted in the Bible, with verses you can read in full.',
+    image: require('../../assets/images/plan-heroes/onboarding2b.png'),
+    headline: 'Ask anything.\nGet scripture.',
+    body: "Grounded in God's Word, each answer is tailored to your journey—connecting Scripture to your life as it unfolds.",
   },
   {
     id: '2',
-    icon: 'heart',
-    headline: 'It remembers your journey.',
-    body:
-      'Pastor builds a living knowledge graph of your faith walk — the themes you explore, the passages that move you, and the prayers on your heart.',
+    image: require('../../assets/images/plan-heroes/onboarding03.png'),
+    headline: 'It remembers\nyour journey.',
+    body: 'Pastor builds a living picture of your faith—what you explore, what moves you, and what you carry in prayer.',
   },
   {
     id: '3',
-    icon: 'sun',
-    headline: 'Pray together.',
-    body:
-      'This is not ChatGPT with a Bible. Pastor is designed for sacred conversation — a quiet, reverent space for prayer, reflection, and growth.',
+    image: require('../../assets/images/plan-heroes/onboarding04.png'),
+    headline: 'A space for\nsacred conversation.',
+    body: 'Designed for reverent, unhurried dialogue—where Scripture, prayer, and reflection come together.',
   },
 ];
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const AUTO_ADVANCE_INTERVAL = 4000;
+const IMAGE_CARD_SIZE = SCREEN_WIDTH - Spacing.xl * 2;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -62,127 +54,98 @@ const AUTO_ADVANCE_INTERVAL = 4000;
 
 export default function CarouselScreen() {
   const colors = Colors.light;
-  const flatListRef = useRef<FlatList<Slide>>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const userSwipedRef = useRef(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const insets = useSafeAreaInsets();
+  const [index, setIndex] = useState(0);
+  const slide = SLIDES[index];
+  const isLast = index === SLIDES.length - 1;
 
-  // Start / restart auto-advance
-  const startAutoAdvance = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      setActiveIndex((prev) => {
-        const next = prev < SLIDES.length - 1 ? prev + 1 : 0;
-        flatListRef.current?.scrollToIndex({ index: next, animated: true });
-        return next;
-      });
-    }, AUTO_ADVANCE_INTERVAL);
-  }, []);
+  const handleContinue = () => {
+    if (isLast) {
+      router.push('/(auth)/personalize');
+    } else {
+      setIndex(index + 1);
+    }
+  };
 
-  useEffect(() => {
-    startAutoAdvance();
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [startAutoAdvance]);
-
-  // Viewability callback — updates active dot
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length > 0 && viewableItems[0].index != null) {
-        setActiveIndex(viewableItems[0].index);
-      }
-    },
-    []
-  );
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
-
-  // Pause auto-advance while user is swiping, restart when they lift
-  const handleScrollBeginDrag = useCallback(() => {
-    userSwipedRef.current = true;
-    if (intervalRef.current) clearInterval(intervalRef.current);
-  }, []);
-
-  const handleScrollEndDrag = useCallback(() => {
-    userSwipedRef.current = false;
-    startAutoAdvance();
-  }, [startAutoAdvance]);
-
-  // Render each slide
-  const renderSlide = useCallback(
-    ({ item }: { item: Slide }) => (
-      <View style={styles.slide}>
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: colors.surface },
-          ]}
-        >
-          <Feather name={item.icon} size={40} color={colors.accent} />
-        </View>
-        <Text style={[styles.headline, { color: colors.textPrimary }]}>
-          {item.headline}
-        </Text>
-        <Text style={[styles.body, { color: colors.textSecondary }]}>
-          {item.body}
-        </Text>
-      </View>
-    ),
-    [colors]
-  );
+  const handleSkip = () => {
+    router.push('/(auth)/personalize');
+  };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <StatusBar style="dark" />
 
-      {/* Slides */}
-      <FlatList
-        ref={flatListRef}
-        data={SLIDES}
-        keyExtractor={(item) => item.id}
-        renderItem={renderSlide}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        onScrollBeginDrag={handleScrollBeginDrag}
-        onScrollEndDrag={handleScrollEndDrag}
-        scrollEventThrottle={16}
-        style={styles.flatList}
-        contentContainerStyle={styles.flatListContent}
-      />
-
-      {/* Dot indicators */}
-      <View style={styles.dotsContainer}>
-        {SLIDES.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.dot,
-              i === activeIndex
-                ? [styles.dotActive, { backgroundColor: colors.accent }]
-                : [styles.dotInactive, { borderColor: colors.accent }],
-            ]}
+      <View style={[styles.inner, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.lg }]}>
+        {/* Hero image card */}
+        <View style={styles.imageCard}>
+          <Image
+            source={slide.image}
+            style={styles.image}
+            resizeMode="cover"
           />
-        ))}
-      </View>
+          {/* Soft vignette: fades edges into card background */}
+          <LinearGradient
+            colors={['rgba(252,249,242,0.45)', 'transparent', 'transparent', 'rgba(252,249,242,0.55)']}
+            locations={[0, 0.18, 0.72, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Overall softening tint */}
+          <View style={[StyleSheet.absoluteFill, styles.imageTint]} />
+        </View>
 
-      {/* Continue CTA */}
-      <View style={styles.ctaContainer}>
-        <TouchableOpacity
-          style={[styles.continueButton, { backgroundColor: colors.textPrimary }]}
-          activeOpacity={0.85}
-          onPress={() => router.push('/(auth)/personalize')}
-          accessibilityRole="button"
-          accessibilityLabel="Continue to personalization"
-        >
-          <Text style={[styles.continueButtonText, { color: colors.background }]}>
-            Continue
+        {/* Dot indicators */}
+        <View style={styles.dots}>
+          {SLIDES.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                i === index
+                  ? [styles.dotActive, { backgroundColor: colors.accent }]
+                  : [styles.dotInactive, { backgroundColor: colors.accentSecondary, opacity: 0.35 }],
+              ]}
+            />
+          ))}
+        </View>
+
+        {/* Copy */}
+        <View style={styles.copy}>
+          <Text style={[styles.headline, { color: colors.accent }]}>
+            {slide.headline}
           </Text>
-        </TouchableOpacity>
+          <Text style={[styles.body, { color: colors.textSecondary }]}>
+            {slide.body}
+          </Text>
+        </View>
+
+        {/* CTAs */}
+        <View style={styles.ctas}>
+          <TouchableOpacity
+            style={[styles.continueButton, { backgroundColor: colors.accent }]}
+            activeOpacity={0.85}
+            onPress={handleContinue}
+            accessibilityRole="button"
+            accessibilityLabel={isLast ? 'Get started' : 'Continue to next slide'}
+          >
+            <Text style={styles.continueText}>
+              {isLast ? 'Get Started' : 'Continue'}
+            </Text>
+          </TouchableOpacity>
+
+          {!isLast && (
+            <TouchableOpacity
+              style={styles.skipLink}
+              activeOpacity={0.6}
+              onPress={handleSkip}
+              accessibilityRole="link"
+              accessibilityLabel="Skip onboarding"
+            >
+              <Text style={[styles.skipText, { color: colors.textTertiary }]}>Skip</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -191,36 +154,60 @@ export default function CarouselScreen() {
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  safe: {
+  root: {
     flex: 1,
   },
-  flatList: {
+  inner: {
     flex: 1,
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.xl,
   },
-  flatListContent: {
-    // no extra styles needed — pagingEnabled handles widths
-  },
-  slide: {
-    width: SCREEN_WIDTH,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing['2xl'],
-  },
-  iconContainer: {
-    width: 88,
-    height: 88,
+
+  // Image card
+  imageCard: {
+    width: IMAGE_CARD_SIZE,
+    aspectRatio: 1,
     borderRadius: Radius.xl,
-    alignItems: 'center',
+    overflow: 'hidden',
+    alignSelf: 'center',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  imageTint: {
+    backgroundColor: 'rgba(252,249,242,0.12)',
+  },
+
+  // Dots
+  dots: {
+    flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: Spacing['2xl'],
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  dot: {
+    borderRadius: Radius.full,
+  },
+  dotActive: {
+    width: 22,
+    height: 7,
+  },
+  dotInactive: {
+    width: 7,
+    height: 7,
+  },
+
+  // Copy
+  copy: {
+    flex: 1,
+    gap: Spacing.base,
   },
   headline: {
-    fontFamily: Typography.fontFamily.serif,
-    fontSize: Typography.size['2xl'],
-    lineHeight: Typography.size['2xl'] * 1.25,
+    fontFamily: Typography.fontFamily.serifBold,
+    fontSize: Typography.size['3xl'],
+    lineHeight: Typography.size['3xl'] * 1.2,
     textAlign: 'center',
-    marginBottom: Spacing.base,
   },
   body: {
     fontFamily: Typography.fontFamily.regular,
@@ -229,43 +216,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Dots
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+  // CTAs
+  ctas: {
     gap: Spacing.sm,
-    paddingVertical: Spacing.xl,
-  },
-  dot: {
-    borderRadius: Radius.full,
-  },
-  dotActive: {
-    width: 20,
-    height: 7,
-    borderRadius: Radius.full,
-  },
-  dotInactive: {
-    width: 7,
-    height: 7,
-    borderWidth: 1.5,
-    backgroundColor: 'transparent',
-  },
-
-  // CTA
-  ctaContainer: {
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.xl,
   },
   continueButton: {
     borderRadius: Radius.lg,
-    height: 56,
+    height: 58,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  continueButtonText: {
+  continueText: {
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.size.md,
+    color: '#FFFFFF',
     letterSpacing: 0.3,
+  },
+  skipLink: {
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+  },
+  skipText: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.size.base,
   },
 });

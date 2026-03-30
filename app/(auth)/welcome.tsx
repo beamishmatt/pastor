@@ -4,53 +4,62 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
+  ImageBackground,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, Radius } from '../../components/ui/tokens';
+
 
 export default function WelcomeScreen() {
   const colors = Colors.light;
+  const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    <View style={styles.root}>
+      <StatusBar style="light" />
 
-      <View style={styles.container}>
-        {/* Top third — logo area */}
-        <View style={styles.logoSection}>
-          {/* Cross-like icon composed from two overlapping bars */}
-          <View style={styles.crossContainer}>
-            <View style={[styles.crossVertical, { backgroundColor: colors.accent }]} />
-            <View style={[styles.crossHorizontal, { backgroundColor: colors.accent }]} />
-          </View>
-          <Text style={[styles.wordmark, { color: colors.textPrimary }]}>PASTOR</Text>
-        </View>
+      {/* Full-screen hero image */}
+      <ImageBackground
+        source={require('../../assets/images/plan-heroes/onboarding01.png')}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+      />
 
-        {/* Copy */}
-        <View style={styles.copySection}>
+      {/* Gradient fade: transparent → cream across bottom half */}
+      <LinearGradient
+        colors={['transparent', 'rgba(252,249,242,0.55)', 'rgba(252,249,242,0.92)', colors.background]}
+        locations={[0.3, 0.55, 0.75, 0.92]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Wordmark — top of screen */}
+      <View style={[styles.wordmarkContainer, { paddingTop: insets.top + Spacing.lg }]}>
+        <Text style={styles.wordmark}>Pastor</Text>
+      </View>
+
+      {/* Bottom content */}
+      <View style={[styles.bottom, { paddingBottom: insets.bottom + Spacing.xl }]}>
+        <View style={styles.copy}>
           <Text style={[styles.headline, { color: colors.textPrimary }]}>
-            Your personal guide through scripture.
+            Walk deeper{'\n'}into the Word.
           </Text>
           <Text style={[styles.subtext, { color: colors.textSecondary }]}>
-            Grounded in the Bible. Remembers your journey.
+            A personal guide through Scripture—{'\n'}grounded in truth, shaped by your journey.
           </Text>
         </View>
 
-        {/* CTAs */}
-        <View style={styles.ctaSection}>
+        <View style={styles.ctas}>
           <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: colors.textPrimary }]}
+            style={[styles.primaryButton, { backgroundColor: colors.accent }]}
             activeOpacity={0.85}
             onPress={() => router.push('/(auth)/carousel')}
             accessibilityRole="button"
             accessibilityLabel="Get started"
           >
-            <Text style={[styles.primaryButtonText, { color: colors.background }]}>
-              Get started
-            </Text>
+            <Text style={styles.primaryButtonText}>Get Started</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -61,98 +70,67 @@ export default function WelcomeScreen() {
             accessibilityLabel="Sign in to existing account"
           >
             <Text style={[styles.signInText, { color: colors.textSecondary }]}>
-              Already have an account?{' '}
-              <Text style={{ color: colors.textPrimary, fontFamily: Typography.fontFamily.medium }}>
-                Sign in
-              </Text>
+              SIGN IN
             </Text>
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  root: {
     flex: 1,
+    backgroundColor: Colors.light.background,
   },
-  container: {
-    flex: 1,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing['2xl'],
-    paddingBottom: Spacing.xl,
-    justifyContent: 'space-between',
-  },
-
-  // Logo section — occupies roughly the top third
-  logoSection: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    maxHeight: '38%',
-  },
-  crossContainer: {
-    width: 52,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.base,
-  },
-  crossVertical: {
+  wordmarkContainer: {
     position: 'absolute',
-    width: 6,
-    height: 52,
-    borderRadius: 3,
-  },
-  crossHorizontal: {
-    position: 'absolute',
-    width: 36,
-    height: 6,
-    borderRadius: 3,
-    top: 14,
+    top: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
   wordmark: {
-    fontFamily: Typography.fontFamily.serif,
+    fontFamily: Typography.fontFamily.serifItalic,
     fontSize: Typography.size['2xl'],
-    letterSpacing: 6,
+    color: 'rgba(255,255,255,0.72)',
+    letterSpacing: 1,
   },
-
-  // Copy section — headline + subtext
-  copySection: {
+  bottom: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.sm,
+    justifyContent: 'flex-end',
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing['2xl'],
+  },
+  copy: {
+    gap: Spacing.base,
   },
   headline: {
-    fontFamily: Typography.fontFamily.serif,
-    fontSize: Typography.size['3xl'],
-    lineHeight: Typography.size['3xl'] * 1.25,
+    fontFamily: Typography.fontFamily.serifBold,
+    fontSize: 38,
+    lineHeight: 38 * 1.18,
     textAlign: 'center',
-    marginBottom: Spacing.base,
   },
   subtext: {
     fontFamily: Typography.fontFamily.regular,
     fontSize: Typography.size.md,
-    lineHeight: Typography.size.md * 1.5,
+    lineHeight: Typography.size.md * 1.55,
     textAlign: 'center',
   },
-
-  // CTA section
-  ctaSection: {
-    paddingBottom: Spacing.base,
+  ctas: {
     gap: Spacing.base,
   },
   primaryButton: {
-    borderRadius: Radius.lg,
-    height: 56,
+    borderRadius: Radius.full,
+    height: 58,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButtonText: {
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.size.md,
+    color: '#FFFFFF',
     letterSpacing: 0.3,
   },
   signInLink: {
@@ -160,7 +138,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   signInText: {
-    fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.base,
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.size.sm,
+    letterSpacing: 1.5,
   },
 });

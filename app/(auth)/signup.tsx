@@ -3,9 +3,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -13,17 +11,16 @@ import {
   View,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { Colors, Typography, Spacing, Radius, Shadow } from '../../components/ui/tokens';
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export default function SignupScreen() {
   const colors = Colors.light;
+  const insets = useSafeAreaInsets();
 
   const [emailExpanded, setEmailExpanded] = useState(false);
   const [email, setEmail] = useState('');
@@ -33,22 +30,15 @@ export default function SignupScreen() {
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
 
-  // -------------------------------------------------------------------------
-  // Google Sign-In (OAuth redirect — placeholder implementation)
-  // -------------------------------------------------------------------------
   const handleGoogleSignIn = async () => {
     if (isLoadingGoogle) return;
     setIsLoadingGoogle(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: 'pastor://auth/callback',
-        },
+        options: { redirectTo: 'pastor://auth/callback' },
       });
       if (error) throw error;
-      // The OAuth flow opens a browser; session is picked up on redirect.
-      // Navigation to paywall will be handled by auth state listener in _layout.
     } catch (e: any) {
       Alert.alert('Sign in failed', e?.message ?? 'An error occurred. Please try again.');
     } finally {
@@ -56,9 +46,6 @@ export default function SignupScreen() {
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Email Sign-Up
-  // -------------------------------------------------------------------------
   const handleEmailSignUp = async () => {
     if (isLoadingEmail) return;
     setEmailError(null);
@@ -75,12 +62,8 @@ export default function SignupScreen() {
 
     setIsLoadingEmail(true);
     try {
-      const { error } = await supabase.auth.signUp({
-        email: trimmedEmail,
-        password,
-      });
+      const { error } = await supabase.auth.signUp({ email: trimmedEmail, password });
       if (error) throw error;
-
       router.replace('/(auth)/paywall');
     } catch (e: any) {
       setEmailError(e?.message ?? 'Sign up failed. Please try again.');
@@ -89,15 +72,11 @@ export default function SignupScreen() {
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Render helpers
-  // -------------------------------------------------------------------------
-
   const isAnyLoading = isLoadingGoogle || isLoadingEmail;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <StatusBar style="dark" />
 
       <KeyboardAvoidingView
         style={styles.keyboardAvoid}
@@ -105,28 +84,24 @@ export default function SignupScreen() {
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + Spacing['2xl'], paddingBottom: insets.bottom + Spacing['2xl'] },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
           <Text style={[styles.header, { color: colors.textPrimary }]}>
-            Create your free account
+            Create your account.
           </Text>
-          <Text style={[styles.noteText, { color: colors.textSecondary }]}>
-            Account required to save your journey across devices.
+          <Text style={[styles.subheader, { color: colors.textSecondary }]}>
+            Save your journey and pick up where you left off on any device.
           </Text>
 
           {/* Google Sign-In */}
           <TouchableOpacity
-            style={[
-              styles.socialButton,
-              {
-                backgroundColor: colors.surfaceElevated,
-                borderColor: colors.border,
-              },
-              Shadow.sm,
-            ]}
+            style={[styles.googleButton, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }, Shadow.sm]}
             activeOpacity={0.8}
             onPress={handleGoogleSignIn}
             disabled={isAnyLoading}
@@ -137,15 +112,9 @@ export default function SignupScreen() {
               <ActivityIndicator size="small" color={colors.textSecondary} />
             ) : (
               <>
-                {/* Inline Google "G" mark */}
                 <Text style={[styles.googleG, { color: '#4285F4' }]}>G</Text>
-                <Text
-                  style={[
-                    styles.socialButtonText,
-                    { color: colors.textPrimary },
-                  ]}
-                >
-                  Sign in with Google
+                <Text style={[styles.googleText, { color: colors.textPrimary }]}>
+                  Continue with Google
                 </Text>
               </>
             )}
@@ -154,18 +123,16 @@ export default function SignupScreen() {
           {/* Divider */}
           <View style={styles.dividerRow}>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.textTertiary }]}>
-              Or continue with email
-            </Text>
+            <Text style={[styles.dividerLabel, { color: colors.textTertiary }]}>or</Text>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
-          {/* Expandable email section */}
+          {/* Email toggle */}
           <TouchableOpacity
             style={[
               styles.emailToggle,
               {
-                borderColor: colors.border,
+                borderColor: emailExpanded ? colors.accent : colors.border,
                 backgroundColor: emailExpanded ? colors.surface : colors.background,
               },
             ]}
@@ -182,35 +149,15 @@ export default function SignupScreen() {
               name={emailExpanded ? 'chevron-up' : 'chevron-down'}
               size={16}
               color={colors.textTertiary}
-              style={styles.chevron}
             />
           </TouchableOpacity>
 
           {emailExpanded && (
-            <View
-              style={[
-                styles.emailForm,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              {/* Email field */}
-              <View
-                style={[
-                  styles.inputContainer,
-                  { borderColor: colors.border },
-                ]}
-              >
+            <View style={[styles.emailForm, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              {/* Email */}
+              <View style={[styles.inputRow, { borderBottomColor: colors.border }]}>
                 <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      color: colors.textPrimary,
-                      fontFamily: Typography.fontFamily.regular,
-                    },
-                  ]}
+                  style={[styles.input, { color: colors.textPrimary, fontFamily: Typography.fontFamily.regular }]}
                   placeholder="Email address"
                   placeholderTextColor={colors.textTertiary}
                   value={email}
@@ -224,23 +171,10 @@ export default function SignupScreen() {
                 />
               </View>
 
-              {/* Password field */}
-              <View
-                style={[
-                  styles.inputContainer,
-                  styles.inputContainerLast,
-                  { borderColor: colors.border },
-                ]}
-              >
+              {/* Password */}
+              <View style={[styles.inputRow, styles.inputRowLast]}>
                 <TextInput
-                  style={[
-                    styles.input,
-                    styles.inputFlex,
-                    {
-                      color: colors.textPrimary,
-                      fontFamily: Typography.fontFamily.regular,
-                    },
-                  ]}
+                  style={[styles.input, styles.inputFlex, { color: colors.textPrimary, fontFamily: Typography.fontFamily.regular }]}
                   placeholder="Password (min. 8 characters)"
                   placeholderTextColor={colors.textTertiary}
                   value={password}
@@ -258,30 +192,16 @@ export default function SignupScreen() {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  <Feather
-                    name={showPassword ? 'eye-off' : 'eye'}
-                    size={16}
-                    color={colors.textTertiary}
-                  />
+                  <Feather name={showPassword ? 'eye-off' : 'eye'} size={16} color={colors.textTertiary} />
                 </TouchableOpacity>
               </View>
 
-              {/* Inline error */}
               {emailError && (
-                <Text style={[styles.errorText, { color: colors.error }]}>
-                  {emailError}
-                </Text>
+                <Text style={[styles.errorText, { color: colors.error }]}>{emailError}</Text>
               )}
 
-              {/* Create account button */}
               <TouchableOpacity
-                style={[
-                  styles.emailSubmitButton,
-                  {
-                    backgroundColor: colors.textPrimary,
-                    opacity: isAnyLoading ? 0.6 : 1,
-                  },
-                ]}
+                style={[styles.submitButton, { backgroundColor: colors.accent, opacity: isAnyLoading ? 0.6 : 1 }]}
                 activeOpacity={0.85}
                 onPress={handleEmailSignUp}
                 disabled={isAnyLoading}
@@ -289,16 +209,9 @@ export default function SignupScreen() {
                 accessibilityLabel="Create account"
               >
                 {isLoadingEmail ? (
-                  <ActivityIndicator size="small" color={colors.background} />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text
-                    style={[
-                      styles.emailSubmitText,
-                      { color: colors.background },
-                    ]}
-                  >
-                    Create account
-                  </Text>
+                  <Text style={styles.submitText}>Create account</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -310,75 +223,66 @@ export default function SignupScreen() {
               By continuing you agree to our{' '}
             </Text>
             <TouchableOpacity
-              onPress={() =>
-                Alert.alert('Terms of Service', 'Full terms coming soon.')
-              }
+              onPress={() => Alert.alert('Terms of Service', 'Full terms coming soon.')}
               accessibilityRole="link"
             >
-              <Text style={[styles.termsLink, { color: colors.textSecondary }]}>
-                Terms of Service
-              </Text>
+              <Text style={[styles.termsLink, { color: colors.textSecondary }]}>Terms of Service</Text>
             </TouchableOpacity>
             <Text style={[styles.termsText, { color: colors.textTertiary }]}> and </Text>
             <TouchableOpacity
-              onPress={() =>
-                Alert.alert('Privacy Policy', 'Full privacy policy coming soon.')
-              }
+              onPress={() => Alert.alert('Privacy Policy', 'Full privacy policy coming soon.')}
               accessibilityRole="link"
             >
-              <Text style={[styles.termsLink, { color: colors.textSecondary }]}>
-                Privacy Policy
-              </Text>
+              <Text style={[styles.termsLink, { color: colors.textSecondary }]}>Privacy Policy</Text>
             </TouchableOpacity>
             <Text style={[styles.termsText, { color: colors.textTertiary }]}>.</Text>
           </View>
 
-          <View style={styles.bottomSpacer} />
+          {/* Sign in link */}
+          <TouchableOpacity
+            style={styles.signInLink}
+            activeOpacity={0.6}
+            onPress={() => router.push('/(auth)/login')}
+            accessibilityRole="link"
+          >
+            <Text style={[styles.signInText, { color: colors.textTertiary }]}>
+              Already have an account?{' '}
+              <Text style={{ color: colors.accent, fontFamily: Typography.fontFamily.medium }}>
+                Sign in
+              </Text>
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
+  root: { flex: 1 },
+  keyboardAvoid: { flex: 1 },
+  scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing['2xl'],
-    paddingBottom: Spacing['2xl'],
   },
 
-  // Header
   header: {
-    fontFamily: Typography.fontFamily.serif,
-    fontSize: Typography.size['2xl'],
-    lineHeight: Typography.size['2xl'] * 1.25,
+    fontFamily: Typography.fontFamily.serifBold,
+    fontSize: Typography.size['3xl'],
+    lineHeight: Typography.size['3xl'] * 1.2,
     marginBottom: Spacing.sm,
   },
-  noteText: {
+  subheader: {
     fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.sm,
-    lineHeight: Typography.size.sm * 1.5,
-    marginBottom: Spacing['2xl'],
+    fontSize: Typography.size.md,
+    lineHeight: Typography.size.md * 1.55,
+    marginBottom: Spacing['3xl'],
   },
 
-  // Google button
-  socialButton: {
+  googleButton: {
     flexDirection: 'row',
-    height: 56,
-    borderRadius: Radius.lg,
+    height: 58,
+    borderRadius: Radius.full,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -390,37 +294,33 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.lg,
     lineHeight: Typography.size.lg,
   },
-  socialButtonText: {
+  googleText: {
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.size.base,
   },
 
-  // Divider
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
+    gap: Spacing.base,
+    marginBottom: Spacing.xl,
   },
   dividerLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
   },
-  dividerText: {
+  dividerLabel: {
     fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    fontSize: Typography.size.sm,
   },
 
-  // Email toggle
   emailToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 52,
-    borderWidth: 1,
-    borderRadius: Radius.lg,
-    paddingHorizontal: Spacing.base,
+    height: 56,
+    borderWidth: 1.5,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.xl,
     gap: Spacing.sm,
     marginBottom: Spacing.sm,
   },
@@ -429,26 +329,21 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.regular,
     fontSize: Typography.size.base,
   },
-  chevron: {
-    marginLeft: 'auto',
-  },
 
-  // Email form
   emailForm: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: Radius.lg,
-    overflow: 'hidden',
-    marginBottom: Spacing.xl,
     padding: Spacing.base,
     gap: Spacing.sm,
+    marginBottom: Spacing.xl,
   },
-  inputContainer: {
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
     paddingBottom: Spacing.sm,
   },
-  inputContainerLast: {
+  inputRowLast: {
     borderBottomWidth: 0,
     paddingBottom: 0,
   },
@@ -457,27 +352,26 @@ const styles = StyleSheet.create({
     lineHeight: Typography.size.base * 1.5,
     paddingVertical: Spacing.sm,
   },
-  inputFlex: {
-    flex: 1,
-  },
+  inputFlex: { flex: 1 },
   errorText: {
     fontFamily: Typography.fontFamily.regular,
     fontSize: Typography.size.sm,
     lineHeight: Typography.size.sm * 1.5,
   },
-  emailSubmitButton: {
-    borderRadius: Radius.md,
-    height: 48,
+  submitButton: {
+    borderRadius: Radius.full,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: Spacing.sm,
+    marginTop: Spacing.xs,
   },
-  emailSubmitText: {
+  submitText: {
     fontFamily: Typography.fontFamily.medium,
     fontSize: Typography.size.base,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
 
-  // Terms
   termsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -496,7 +390,13 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
 
-  bottomSpacer: {
-    height: Spacing.xl,
+  signInLink: {
+    alignItems: 'center',
+    paddingVertical: Spacing.lg,
+    marginTop: Spacing.sm,
+  },
+  signInText: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.size.base,
   },
 });

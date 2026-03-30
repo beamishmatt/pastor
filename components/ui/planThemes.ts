@@ -34,49 +34,49 @@ export type PlanHeroTheme = {
 
 const THEMES: Record<string, PlanHeroTheme> = {
   wisdom: {
-    // image: require('../../assets/images/plan-heroes/wisdom.png'),
+    image:     require('../../assets/images/plan-heroes/hero01.png'),
     colors:    ['#3D5A4C', '#6B8C6E', '#A8B89A'],
     locations: [0, 0.55, 1],
     orbColor:  'rgba(255,255,240,0.18)',
   },
   peace: {
-    // image: require('../../assets/images/plan-heroes/peace.png'),
+    image:     require('../../assets/images/plan-heroes/hero02.png'),
     colors:    ['#2E5266', '#6B9BAD', '#B8D4DC'],
     locations: [0, 0.5, 1],
     orbColor:  'rgba(255,255,255,0.20)',
   },
   faith: {
-    // image: require('../../assets/images/plan-heroes/faith.png'),
+    image:     require('../../assets/images/plan-heroes/hero03.png'),
     colors:    ['#5C3D2E', '#A0714F', '#D4A574'],
     locations: [0, 0.5, 1],
     orbColor:  'rgba(255,240,200,0.22)',
   },
   psalms: {
-    // image: require('../../assets/images/plan-heroes/psalms.png'),
+    image:     require('../../assets/images/plan-heroes/hero02.png'),
     colors:    ['#2D2B55', '#4A4880', '#7B78B0'],
     locations: [0, 0.55, 1],
     orbColor:  'rgba(255,255,255,0.15)',
   },
   hope: {
-    // image: require('../../assets/images/plan-heroes/hope.png'),
+    image:     require('../../assets/images/plan-heroes/hero03.png'),
     colors:    ['#7A4419', '#C47B3A', '#E8B97A'],
     locations: [0, 0.45, 1],
     orbColor:  'rgba(255,245,200,0.25)',
   },
   prayer: {
-    // image: require('../../assets/images/plan-heroes/prayer.png'),
+    image:     require('../../assets/images/plan-heroes/hero01.png'),
     colors:    ['#2E2040', '#5C4A7A', '#9C84B4'],
     locations: [0, 0.5, 1],
     orbColor:  'rgba(255,255,255,0.14)',
   },
   gospel: {
-    // image: require('../../assets/images/plan-heroes/gospel.png'),
+    image:     require('../../assets/images/plan-heroes/hero02.png'),
     colors:    ['#2E3D20', '#5C7040', '#8EA870'],
     locations: [0, 0.5, 1],
     orbColor:  'rgba(255,255,220,0.18)',
   },
   default: {
-    image: require('../../assets/images/plan-heroes/hero01.png'),
+    image:     require('../../assets/images/plan-heroes/hero01.png'),
     colors:    ['#3D5A4C', '#6B8C6E', '#A8B89A'],
     locations: [0, 0.55, 1],
     orbColor:  'rgba(255,255,240,0.18)',

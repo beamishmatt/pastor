@@ -29,9 +29,6 @@ interface TranslationOption {
 const TRANSLATIONS: TranslationOption[] = [
   { key: 'KJV', label: 'KJV', available: true },
   { key: 'WEB', label: 'WEB', available: true },
-  { key: 'ESV', label: 'ESV', available: false },
-  { key: 'NIV', label: 'NIV', available: false },
-  { key: 'NASB', label: 'NASB', available: false },
 ];
 
 const FAITH_BACKGROUNDS: string[] = [
@@ -233,7 +230,7 @@ export default function PersonalizeScreen() {
             style={[
               styles.continueButton,
               {
-                backgroundColor: colors.textPrimary,
+                backgroundColor: colors.accent,
                 opacity: isSaving ? 0.6 : 1,
               },
             ]}

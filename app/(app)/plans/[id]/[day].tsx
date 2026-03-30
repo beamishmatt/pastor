@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -15,21 +16,45 @@ import {
   View,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, Radius, Shadow } from '../../../../components/ui/tokens';
-import { useSubscription } from '../../../../hooks/useSubscription';
+import { getPlanTheme } from '../../../../components/ui/planThemes';
 import { useReadingPlans, PlanReading } from '../../../../hooks/useReadingPlans';
 import { supabase } from '../../../../lib/supabase';
+
+// ─── Hero ─────────────────────────────────────────────────────────────────────
+
+function DayHero({ planTitle, slug }: { planTitle: string; slug: string }) {
+  const theme = getPlanTheme(planTitle, slug);
+  return (
+    <View style={styles.heroWrap}>
+      {theme.image ? (
+        <Image source={theme.image} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      ) : (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors[0] }]}>
+          <View style={[styles.heroBlob1, { backgroundColor: theme.colors[1] }]} />
+          <View style={[styles.heroBlob2, { backgroundColor: theme.colors[2] }]} />
+        </View>
+      )}
+      <View style={styles.heroOverlay} pointerEvents="none">
+        <Text style={styles.heroTitle}>{planTitle}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function PlanDayScreen() {
   const { id: slug, day } = useLocalSearchParams<{ id: string; day: string }>();
   const dayNumber = parseInt(day ?? '1', 10);
-
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
-  const { isPro } = useSubscription();
+
   const [userId, setUserId] = useState<string | null>(null);
   const [reading, setReading] = useState<PlanReading | null>(null);
   const [readingLoading, setReadingLoading] = useState(true);
+  const [keyVerseText, setKeyVerseText] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [completing, setCompleting] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -47,7 +72,6 @@ export default function PlanDayScreen() {
   const enrollment = plan ? enrollments.find(e => e.plan_id === plan.id) ?? null : null;
   const completedDays = enrollment ? getCompletedDays(enrollment.id) : [];
 
-  // Load this day's reading
   useEffect(() => {
     if (!plan) return;
     setReadingLoading(true);
@@ -63,7 +87,22 @@ export default function PlanDayScreen() {
       });
   }, [plan?.id, dayNumber]);
 
-  // Check completion state
+  // Fetch key verse text from bible_verses
+  useEffect(() => {
+    if (!reading) return;
+    supabase
+      .from('bible_verses')
+      .select('text')
+      .eq('translation', 'KJV')
+      .eq('book', reading.book)
+      .eq('chapter', reading.chapter)
+      .eq('verse', reading.verse_start ?? 1)
+      .single()
+      .then(({ data }) => {
+        if (data?.text) setKeyVerseText(data.text);
+      });
+  }, [reading]);
+
   useEffect(() => {
     setIsCompleted(completedDays.includes(dayNumber));
   }, [completedDays, dayNumber]);
@@ -73,13 +112,17 @@ export default function PlanDayScreen() {
     router.push(`/bible/${encodeURIComponent(reading.book)}/${reading.chapter}`);
   }, [reading]);
 
+  const handleAskPastor = useCallback(() => {
+    if (!reading) return;
+    router.push({ pathname: '/', params: { verse: reading.passage_ref } });
+  }, [reading]);
+
   const handleComplete = useCallback(async () => {
     if (!enrollment || !plan) return;
     setCompleting(true);
     try {
       await markDayComplete(enrollment.id, dayNumber, notes.trim() || undefined);
       setIsCompleted(true);
-
       const isLastDay = dayNumber >= plan.duration_days;
       if (isLastDay) {
         Alert.alert(
@@ -88,36 +131,26 @@ export default function PlanDayScreen() {
           [{ text: 'Back to Plans', onPress: () => router.push('/plans') }]
         );
       } else {
-        // Offer to go to next day
         Alert.alert(
           'Day Complete',
           `Day ${dayNumber} marked as complete. Ready for day ${dayNumber + 1}?`,
           [
             { text: 'Not Now', style: 'cancel', onPress: () => router.back() },
-            {
-              text: `Day ${dayNumber + 1}`,
-              onPress: () => router.replace(`/plans/${slug}/${dayNumber + 1}`),
-            },
+            { text: `Day ${dayNumber + 1}`, onPress: () => router.replace(`/plans/${slug}/${dayNumber + 1}`) },
           ]
         );
       }
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Could not save your progress. Please try again.');
     } finally {
       setCompleting(false);
     }
   }, [enrollment, plan, dayNumber, notes, markDayComplete, slug]);
 
-  const handleAskPastor = useCallback(() => {
-    if (!reading) return;
-    // Navigate to chat with the passage pre-set as scope
-    router.push({ pathname: '/', params: { verse: reading.passage_ref } });
-  }, [reading]);
-
   if (isLoading || readingLoading) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-        <View style={styles.loadingContainer}>
+        <View style={styles.centered}>
           <ActivityIndicator color={colors.accent} />
         </View>
       </SafeAreaView>
@@ -127,374 +160,435 @@ export default function PlanDayScreen() {
   if (!reading || !plan) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.6} style={styles.backButton}>
-            <Text style={[styles.backArrow, { color: colors.textPrimary }]}>←</Text>
-          </TouchableOpacity>
-          <View style={styles.headerRight} />
-        </View>
-        <View style={styles.loadingContainer}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtnFallback}>
+          <Feather name="arrow-left" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <View style={styles.centered}>
           <Text style={[styles.errorText, { color: colors.textTertiary }]}>Reading not found.</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  const reflectionParagraphs = reading.reflection_prompt
+    ? reading.reflection_prompt.split(/\n+/).filter(s => s.trim().length > 0)
+    : [];
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-      <StatusBar
-        barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.background}
-      />
+      <StatusBar barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'} />
 
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      {/* ── Header ── */}
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
-          activeOpacity={0.6}
+          activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={styles.backButton}
+          style={styles.backBtn}
         >
-          <Text style={[styles.backArrow, { color: colors.textPrimary }]}>←</Text>
+          <Feather name="arrow-left" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={[styles.headerDay, { color: colors.textTertiary }]}>
-            Day {dayNumber} of {plan.duration_days}
-          </Text>
-          <Text style={[styles.headerPlanTitle, { color: colors.textSecondary }]} numberOfLines={1}>
-            {plan.title}
+        <View style={styles.headerMeta}>
+          <View style={[styles.dayPill, { backgroundColor: colors.accent }]}>
+            <Text style={styles.dayPillText}>DAY {dayNumber}</Text>
+          </View>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+            {reading.title}
           </Text>
         </View>
-        <View style={styles.headerRight} />
+        <View style={styles.headerSpacer} />
       </View>
 
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Day title + passage */}
-          <View style={styles.passageHeader}>
-            {isCompleted && (
-              <View style={[styles.completedBadge, { backgroundColor: colors.accentSecondary + '22', borderColor: colors.accentSecondary + '44' }]}>
-                <Text style={[styles.completedBadgeText, { color: colors.accentSecondary }]}>✓ Completed</Text>
+          {/* ── Hero ── */}
+          <DayHero planTitle={plan.title} slug={slug} />
+
+          <View style={styles.content}>
+            {/* ── THE WORD ── */}
+            <View style={[styles.wordCard, { backgroundColor: colors.surfaceContainerHigh }]}>
+              <View style={styles.wordCardHeader}>
+                <Text style={[styles.wordLabel, { color: colors.textSecondary }]}>THE WORD</Text>
+              </View>
+              {keyVerseText ? (
+                <Text style={[styles.verseQuote, { color: colors.textPrimary }]}>
+                  "{keyVerseText}"
+                </Text>
+              ) : null}
+              <Text style={[styles.verseAttribution, { color: colors.textTertiary }]}>
+                — {reading.passage_ref} (KJV)
+              </Text>
+              <TouchableOpacity
+                onPress={handleReadInBible}
+                activeOpacity={0.8}
+                style={[styles.readChapterBtn, { backgroundColor: colors.accent }]}
+              >
+                <Text style={styles.readChapterText}>Read Full Chapter</Text>
+                <Feather name="external-link" size={14} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* ── Today's Reflection ── */}
+            {reflectionParagraphs.length > 0 && (
+              <View style={styles.reflectionSection}>
+                <Text style={[styles.reflectionHeading, { color: colors.textPrimary }]}>
+                  Today's Reflection
+                </Text>
+                {reflectionParagraphs.map((para, i) => (
+                  <Text key={i} style={[styles.reflectionBody, { color: colors.textSecondary }]}>
+                    {para}
+                  </Text>
+                ))}
               </View>
             )}
-            <Text style={[styles.dayTitle, { color: colors.textPrimary }]}>{reading.title}</Text>
-            <Text style={[styles.passageRef, { color: colors.accent }]}>{reading.passage_ref}</Text>
-          </View>
 
-          {/* Open in Bible button */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={handleReadInBible}
-            style={[styles.bibleButton, { backgroundColor: colors.surface, borderColor: colors.border, ...Shadow.sm }]}
-          >
-            <View style={styles.bibleButtonInner}>
-              <View>
-                <Text style={[styles.bibleButtonLabel, { color: colors.textPrimary }]}>Read in Bible</Text>
-                <Text style={[styles.bibleButtonSub, { color: colors.textTertiary }]}>
-                  {reading.passage_ref} · Open full chapter
-                </Text>
-              </View>
-              <Text style={[styles.bibleButtonArrow, { color: colors.textTertiary }]}>→</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Reflection prompt */}
-          {reading.reflection_prompt && (
-            <View style={[styles.reflectionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.reflectionLabel, { color: colors.textTertiary }]}>REFLECT</Text>
-              <Text style={[styles.reflectionText, { color: colors.textPrimary }]}>
-                {reading.reflection_prompt}
-              </Text>
-            </View>
-          )}
-
-          {/* Ask Pastor button */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={handleAskPastor}
-            style={[styles.askButton, { backgroundColor: colors.surfaceElevated, borderColor: colors.border, ...Shadow.sm }]}
-          >
-            <View style={styles.askButtonInner}>
-              <View>
-                <Text style={[styles.askButtonLabel, { color: colors.textPrimary }]}>Ask Pastor</Text>
-                <Text style={[styles.askButtonSub, { color: colors.textTertiary }]}>
-                  Explore this passage in conversation
-                </Text>
-              </View>
-              <Text style={[styles.askButtonArrow, { color: colors.accent }]}>→</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Notes */}
-          {!isCompleted && (
-            <View style={styles.notesSection}>
-              <Text style={[styles.notesLabel, { color: colors.textSecondary }]}>
-                Notes (optional)
-              </Text>
-              <TextInput
-                style={[
-                  styles.notesInput,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    color: colors.textPrimary,
-                  },
-                ]}
-                placeholder="What is God speaking to you through this passage?"
-                placeholderTextColor={colors.textTertiary}
-                value={notes}
-                onChangeText={setNotes}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-          )}
-
-          {/* Complete button */}
-          {!isCompleted ? (
+            {/* ── Ask Pastor ── */}
             <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleComplete}
-              disabled={completing || !enrollment}
-              style={[
-                styles.completeButton,
-                {
-                  backgroundColor: colors.accent,
-                  opacity: completing || !enrollment ? 0.6 : 1,
-                },
-              ]}
+              activeOpacity={0.85}
+              onPress={handleAskPastor}
+              style={[styles.askPastorCard, { backgroundColor: colors.warning }]}
             >
-              <Text style={styles.completeButtonText}>
-                {completing ? 'Saving...' : `Mark Day ${dayNumber} Complete`}
-              </Text>
+              <Feather name="message-square" size={26} color="#FFFFFF" />
+              <Text style={[styles.askPastorLabel, { color: '#FFFFFF' }]}>ASK PASTOR</Text>
             </TouchableOpacity>
-          ) : (
-            <View style={[styles.completedState, { backgroundColor: colors.accentSecondary + '22', borderColor: colors.accentSecondary }]}>
-              <Text style={[styles.completedStateText, { color: colors.accentSecondary }]}>
-                ✓ Day {dayNumber} complete
-              </Text>
-              {dayNumber < plan.duration_days && (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => router.replace(`/plans/${slug}/${dayNumber + 1}`)}
-                  style={[styles.nextDayButton, { backgroundColor: colors.accent }]}
-                >
-                  <Text style={styles.nextDayButtonText}>Day {dayNumber + 1} →</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
 
-          {/* Navigation between days */}
-          <View style={styles.dayNav}>
-            {dayNumber > 1 && (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.replace(`/plans/${slug}/${dayNumber - 1}`)}
-                style={[styles.navButton, { borderColor: colors.border }]}
-              >
-                <Text style={[styles.navButtonText, { color: colors.textSecondary }]}>← Day {dayNumber - 1}</Text>
-              </TouchableOpacity>
+            {/* ── Personal Journal ── */}
+            {!isCompleted && (
+              <View style={[styles.journalCard, { backgroundColor: colors.surface }]}>
+                <View style={styles.journalHeader}>
+                  <Feather name="edit-3" size={13} color={colors.accent} />
+                  <Text style={[styles.journalLabel, { color: colors.accent }]}>PERSONAL JOURNAL</Text>
+                </View>
+                <Text style={[styles.journalPrompt, { color: colors.textPrimary }]}>
+                  What is God speaking to you through today's reading?
+                </Text>
+                <TextInput
+                  style={[
+                    styles.journalInput,
+                    {
+                      backgroundColor: colors.surfaceContainerHighest,
+                      color: colors.textPrimary,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  placeholder="Tap to write your thoughts..."
+                  placeholderTextColor={colors.textTertiary}
+                  value={notes}
+                  onChangeText={setNotes}
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
             )}
-            <View style={styles.navSpacer} />
-            {dayNumber < plan.duration_days && (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.replace(`/plans/${slug}/${dayNumber + 1}`)}
-                style={[styles.navButton, { borderColor: colors.border }]}
+
+            {/* ── Completed state ── */}
+            {isCompleted && (
+              <View
+                style={[
+                  styles.completedBanner,
+                  { backgroundColor: colors.accentSecondary + '22', borderColor: colors.accentSecondary + '55' },
+                ]}
               >
-                <Text style={[styles.navButtonText, { color: colors.textSecondary }]}>Day {dayNumber + 1} →</Text>
-              </TouchableOpacity>
+                <Feather name="check-circle" size={18} color={colors.accentSecondary} />
+                <Text style={[styles.completedBannerText, { color: colors.accentSecondary }]}>
+                  Day {dayNumber} complete
+                </Text>
+                {dayNumber < plan.duration_days && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => router.replace(`/plans/${slug}/${dayNumber + 1}`)}
+                    style={[styles.nextDayBtn, { backgroundColor: colors.accent }]}
+                  >
+                    <Text style={styles.nextDayBtnText}>Day {dayNumber + 1} →</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
           </View>
         </ScrollView>
+
+        {/* ── Sticky complete button ── */}
+        {!isCompleted && (
+          <View style={[styles.stickyBottom, { backgroundColor: colors.background }]}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleComplete}
+              disabled={completing || !enrollment}
+              style={[
+                styles.completeBtn,
+                { backgroundColor: colors.accent, opacity: completing || !enrollment ? 0.6 : 1 },
+              ]}
+            >
+              <Feather name="check-circle" size={20} color="#FFFFFF" />
+              <Text style={styles.completeBtnText}>
+                {completing ? 'Saving…' : `Mark Day ${dayNumber} Complete`}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
-  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: { fontFamily: Typography.fontFamily.regular, fontSize: Typography.size.base },
+  backBtnFallback: { padding: Spacing.base },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: Spacing.md,
   },
-  backButton: { width: 40, alignItems: 'flex-start', justifyContent: 'center' },
-  backArrow: { fontSize: Typography.size.lg, fontFamily: Typography.fontFamily.regular },
-  headerCenter: { flex: 1, alignItems: 'center', gap: 1 },
-  headerDay: {
-    fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.xs,
+  backBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  headerPlanTitle: {
-    fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.size.sm,
-    fontWeight: '500',
+  headerMeta: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
-  headerRight: { width: 40 },
-  scrollContent: { padding: Spacing.base, paddingBottom: Spacing['3xl'], gap: Spacing.base },
-  // Passage header
-  passageHeader: { gap: Spacing.sm },
-  completedBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.md,
+  dayPill: {
+    paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     borderRadius: Radius.full,
-    borderWidth: 1,
   },
-  completedBadgeText: {
-    fontFamily: Typography.fontFamily.medium,
+  dayPillText: {
+    fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.size.xs,
-    fontWeight: '500',
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
-  dayTitle: {
+  headerTitle: {
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.size.base,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  headerSpacer: { width: 36 },
+
+  // Hero
+  heroWrap: {
+    marginHorizontal: Spacing.base,
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
+    height: 220,
+  },
+  heroBlob1: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    bottom: -80,
+    left: -60,
+    opacity: 0.7,
+  },
+  heroBlob2: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    top: -60,
+    right: -40,
+    opacity: 0.55,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    padding: Spacing.lg,
+    backgroundColor: 'rgba(0,0,0,0.30)',
+  },
+  heroTitle: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.size.xl,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    lineHeight: Typography.size.xl * 1.25,
+  },
+
+  // Scroll + content wrapper
+  scroll: { paddingBottom: Spacing['3xl'] },
+  content: {
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.xl,
+    gap: Spacing.xl,
+  },
+
+  // THE WORD card
+  wordCard: {
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+    ...Shadow.sm,
+  },
+  wordCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  wordLabel: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.size.xs,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  verseQuote: {
+    fontFamily: Typography.fontFamily.serifItalic,
+    fontSize: Typography.size.md,
+    lineHeight: Typography.size.md * 1.65,
+  },
+  verseAttribution: {
+    fontFamily: Typography.fontFamily.regular,
+    fontSize: Typography.size.sm,
+  },
+  readChapterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.full,
+  },
+  readChapterText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.size.base,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // Today's Reflection
+  reflectionSection: { gap: Spacing.md },
+  reflectionHeading: {
     fontFamily: Typography.fontFamily.bold,
     fontSize: Typography.size.xl,
     fontWeight: '700',
     lineHeight: Typography.size.xl * 1.2,
   },
-  passageRef: {
-    fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.size.base,
-    fontWeight: '500',
-  },
-  // Bible button
-  bibleButton: {
-    borderRadius: Radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.base,
-  },
-  bibleButtonInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  bibleButtonLabel: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.size.base,
-    fontWeight: '600',
-  },
-  bibleButtonSub: {
+  reflectionBody: {
     fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.sm,
-    marginTop: 2,
-  },
-  bibleButtonArrow: { fontSize: Typography.size.lg },
-  // Reflection card
-  reflectionCard: {
-    padding: Spacing.base,
-    borderRadius: Radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: Spacing.sm,
-  },
-  reflectionLabel: {
-    fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.size.xs,
-    fontWeight: '600',
-    letterSpacing: 0.8,
-  },
-  reflectionText: {
-    fontFamily: Typography.fontFamily.serif,
     fontSize: Typography.size.base,
     lineHeight: Typography.size.base * 1.7,
   },
+
   // Ask Pastor
-  askButton: {
+  askPastorCard: {
+    borderRadius: Radius.xl,
+    paddingVertical: Spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    ...Shadow.sm,
+  },
+  askPastorLabel: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.size.sm,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+
+  // Personal Journal
+  journalCard: {
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+    ...Shadow.sm,
+  },
+  journalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  journalLabel: {
+    fontFamily: Typography.fontFamily.bold,
+    fontSize: Typography.size.xs,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  journalPrompt: {
+    fontFamily: Typography.fontFamily.medium,
+    fontSize: Typography.size.base,
+    fontWeight: '500',
+    lineHeight: Typography.size.base * 1.5,
+  },
+  journalInput: {
     borderRadius: Radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.base,
-  },
-  askButtonInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  askButtonLabel: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.size.base,
-    fontWeight: '600',
-  },
-  askButtonSub: {
-    fontFamily: Typography.fontFamily.regular,
-    fontSize: Typography.size.sm,
-    marginTop: 2,
-  },
-  askButtonArrow: { fontSize: Typography.size.lg },
-  // Notes
-  notesSection: { gap: Spacing.sm },
-  notesLabel: {
-    fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.size.sm,
-    fontWeight: '500',
-  },
-  notesInput: {
-    borderWidth: 1,
-    borderRadius: Radius.md,
     padding: Spacing.md,
     fontFamily: Typography.fontFamily.regular,
     fontSize: Typography.size.base,
     lineHeight: Typography.size.base * 1.6,
     minHeight: 100,
   },
-  // Complete
-  completeButton: {
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
-  },
-  completeButtonText: {
-    fontFamily: Typography.fontFamily.semibold,
-    fontSize: Typography.size.base,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  completedState: {
+
+  // Completed banner
+  completedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: Spacing.sm,
     padding: Spacing.md,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     borderWidth: 1,
   },
-  completedStateText: {
+  completedBannerText: {
+    flex: 1,
     fontFamily: Typography.fontFamily.semibold,
     fontSize: Typography.size.base,
     fontWeight: '600',
   },
-  nextDayButton: {
+  nextDayBtn: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.sm,
   },
-  nextDayButtonText: {
+  nextDayBtnText: {
     fontFamily: Typography.fontFamily.semibold,
     fontSize: Typography.size.sm,
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  // Day navigation
-  dayNav: {
+
+  // Sticky complete button
+  stickyBottom: {
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
+  },
+  completeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Spacing.sm,
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.full,
   },
-  navButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
+  completeBtnText: {
+    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.size.base,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
-  navButtonText: {
-    fontFamily: Typography.fontFamily.medium,
-    fontSize: Typography.size.sm,
-    fontWeight: '500',
-  },
-  navSpacer: { flex: 1 },
 });

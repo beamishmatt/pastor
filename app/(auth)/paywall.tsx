@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
-  SafeAreaView,
+  Alert,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { Colors, Typography as T, Spacing, Radius, Shadow } from '../../components/ui/tokens';
 import { getOfferings, purchasePackage, restorePurchases, ENTITLEMENT_PRO } from '../../lib/revenuecat';
@@ -20,24 +19,49 @@ import { useSubscription } from '../../hooks/useSubscription';
 // Data
 // ---------------------------------------------------------------------------
 
-const FEATURES: Array<{ label: string; free: boolean; pro: boolean }> = [
-  { label: 'Full Bible text',          free: true,  pro: true },
-  { label: 'Daily verse',              free: true,  pro: true },
-  { label: 'Bookmarks & highlights',   free: true,  pro: true },
-  { label: 'AI conversation',          free: false, pro: true },
-  { label: 'Voice prayer & study',     free: false, pro: true },
-  { label: 'Spiritual journey memory', free: false, pro: true },
-  { label: 'Personalized devotionals', free: false, pro: true },
+const FEATURES: { title: string; description: string }[] = [
+  {
+    title: 'Full access to Scripture',
+    description: 'Read any passage in its complete context',
+  },
+  {
+    title: 'Personalized guidance',
+    description: "Conversations grounded in God's Word and shaped by your journey",
+  },
+  {
+    title: 'Devotionals that grow with you',
+    description: 'Reflections built from what you explore, return to, and carry in prayer',
+  },
 ];
 
-const PRODUCT_IDS = {
-  annual:  'pastor_pro_annual',
-  monthly: 'pastor_pro_monthly',
-  weekly:  'pastor_pro_weekly',
-} as const;
+type PlanKey = 'annual' | 'monthly' | 'weekly';
 
-const CHECKMARK = '✓';
-const DASH = '—';
+const PLANS: { key: PlanKey; title: string; subtitle: string; price: string; unit: string; productId: string }[] = [
+  {
+    key: 'annual',
+    title: 'Annual Plan',
+    subtitle: 'First 7 days free, then $199/yr',
+    price: '$3.83',
+    unit: 'per week',
+    productId: 'pastor_pro_annual',
+  },
+  {
+    key: 'monthly',
+    title: 'Monthly Plan',
+    subtitle: 'Billed every month',
+    price: '$18.99',
+    unit: 'per month',
+    productId: 'pastor_pro_monthly',
+  },
+  {
+    key: 'weekly',
+    title: 'Weekly Plan',
+    subtitle: 'Flexible, cancel anytime',
+    price: '$5.99',
+    unit: 'per week',
+    productId: 'pastor_pro_weekly',
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Component
@@ -45,16 +69,17 @@ const DASH = '—';
 
 export default function PaywallScreen() {
   const colors = Colors.light;
+  const insets = useSafeAreaInsets();
   const { refresh } = useSubscription();
 
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey>('annual');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Navigate to main app
   const goToApp = () => router.replace('/(app)/index');
 
-  // Purchase a specific product by its ID
-  const handlePurchase = async (productId: string) => {
+  const handleSubscribe = async () => {
     if (isLoading) return;
+    const plan = PLANS.find((p) => p.key === selectedPlan)!;
     setIsLoading(true);
     try {
       const offerings = await getOfferings();
@@ -62,26 +87,19 @@ export default function PaywallScreen() {
         Alert.alert('Unavailable', 'No subscription offerings found. Please try again later.');
         return;
       }
-
-      // Find matching package across all offering packages
-      const allPackages = offerings.current.availablePackages;
-      const pkg = allPackages.find(
-        (p) => p.product.identifier === productId
+      const pkg = offerings.current.availablePackages.find(
+        (p) => p.product.identifier === plan.productId
       );
-
       if (!pkg) {
         Alert.alert('Unavailable', 'That subscription option is not currently available.');
         return;
       }
-
       const { customerInfo } = await purchasePackage(pkg);
-
       if (customerInfo.entitlements.active[ENTITLEMENT_PRO]) {
         await refresh();
         goToApp();
       }
     } catch (e: any) {
-      // Code 1 = user cancelled — no-op
       if (e?.code !== 1) {
         Alert.alert('Purchase failed', e?.message ?? 'An error occurred. Please try again.');
       }
@@ -101,7 +119,7 @@ export default function PaywallScreen() {
           { text: 'Continue', onPress: goToApp },
         ]);
       } else {
-        Alert.alert('Nothing to restore', 'No active Pastor Pro subscription was found for your account.');
+        Alert.alert('Nothing to restore', 'No active Pastor Pro subscription was found.');
       }
     } catch (e: any) {
       Alert.alert('Restore failed', e?.message ?? 'An error occurred. Please try again.');
@@ -110,220 +128,138 @@ export default function PaywallScreen() {
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
+  const ctaLabel = selectedPlan === 'annual' ? 'Start 7-Day Free Trial' : 'Get Started';
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <StatusBar style="dark" />
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + Spacing['2xl'] },
+        ]}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        {/* Headline */}
-        <View style={styles.heroSection}>
-          <Text style={[styles.headline, { color: colors.textPrimary }]}>
-            Unlock your personal pastor
-          </Text>
+        {/* Header */}
+        <View style={styles.hero}>
+          <Text style={[styles.headline, { color: colors.textPrimary }]}>Unlock Pro</Text>
           <Text style={[styles.subheadline, { color: colors.textSecondary }]}>
-            Scripture-grounded answers. Remembers your journey.
+            Deepen your spiritual journey with{'\n'}Scripture, prayer, and AI guidance.
           </Text>
         </View>
 
-        {/* Feature comparison table */}
-        <View
-          style={[
-            styles.table,
-            { borderColor: colors.border, backgroundColor: colors.surfaceElevated },
-          ]}
-        >
-          {/* Table header */}
-          <View
-            style={[
-              styles.tableRow,
-              styles.tableHeader,
-              { borderBottomColor: colors.border },
-            ]}
-          >
-            <View style={styles.featureCell} />
-            <View style={styles.planCell}>
-              <Text style={[styles.planHeaderText, { color: colors.textSecondary }]}>
-                Free
-              </Text>
+        {/* Feature list */}
+        <View style={[styles.featureCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.featureCardTitle, { color: colors.textTertiary }]}>
+            YOUR JOURNEY, GUIDED BY SCRIPTURE
+          </Text>
+          {FEATURES.map((f, i) => (
+            <View
+              key={f.title}
+              style={[
+                styles.featureRow,
+                i < FEATURES.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+              ]}
+            >
+              <Text style={[styles.bullet, { color: colors.textPrimary }]}>{'\u2022'}</Text>
+              <View style={styles.featureText}>
+                <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>{f.title}</Text>
+                <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>{f.description}</Text>
+              </View>
             </View>
-            <View style={styles.planCell}>
-              <Text
-                style={[
-                  styles.planHeaderText,
-                  styles.proPlanText,
-                  { color: colors.accent },
-                ]}
-              >
-                Pro
-              </Text>
-            </View>
-          </View>
+          ))}
+        </View>
 
-          {FEATURES.map((feature, index) => {
-            const isLast = index === FEATURES.length - 1;
+        {/* Plan selector */}
+        <View style={styles.plans}>
+          {PLANS.map((plan) => {
+            const isSelected = selectedPlan === plan.key;
+            const isAnnual = plan.key === 'annual';
             return (
-              <View
-                key={feature.label}
-                style={[
-                  styles.tableRow,
-                  !isLast && styles.tableRowBorder,
-                  !isLast && { borderBottomColor: colors.border },
-                ]}
-              >
-                <View style={styles.featureCell}>
-                  <Text style={[styles.featureLabel, { color: colors.textPrimary }]}>
-                    {feature.label}
-                  </Text>
-                </View>
-                <View style={styles.planCell}>
-                  <Text
-                    style={[
-                      styles.checkmark,
-                      { color: feature.free ? colors.success : colors.textTertiary },
-                    ]}
-                  >
-                    {feature.free ? CHECKMARK : DASH}
-                  </Text>
-                </View>
-                <View style={styles.planCell}>
-                  <Text style={[styles.checkmark, { color: colors.success }]}>
-                    {CHECKMARK}
-                  </Text>
-                </View>
+              <View key={plan.key} style={styles.planWrapper}>
+                {isAnnual && (
+                  <View style={[styles.bestValueBadge, { backgroundColor: colors.surfaceContainerHighest, borderColor: colors.accent }]}>
+                    <Text style={[styles.bestValueText, { color: colors.accent }]}>BEST VALUE</Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={[
+                    styles.planCard,
+                    {
+                      backgroundColor: isSelected ? colors.surfaceElevated : colors.surface,
+                      borderColor: isSelected ? colors.accent : colors.border,
+                      borderWidth: isSelected ? 2 : 1.5,
+                    },
+                    isAnnual && styles.planCardAnnual,
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => setSelectedPlan(plan.key)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: isSelected }}
+                  accessibilityLabel={`${plan.title}, ${plan.price} ${plan.unit}`}
+                >
+                  <View style={styles.planLeft}>
+                    <Text style={[styles.planTitle, { color: colors.textPrimary }]}>{plan.title}</Text>
+                    <Text style={[styles.planSubtitle, { color: colors.textSecondary }]}>{plan.subtitle}</Text>
+                  </View>
+                  <View style={styles.planRight}>
+                    <Text style={[styles.planPrice, { color: colors.textPrimary }]}>{plan.price}</Text>
+                    <Text style={[styles.planUnit, { color: colors.textSecondary }]}>{plan.unit}</Text>
+                  </View>
+                </TouchableOpacity>
               </View>
             );
           })}
         </View>
 
-        {/* Pricing buttons */}
-        <View style={styles.pricingSection}>
-          {/* Annual — primary CTA */}
-          <TouchableOpacity
-            style={[
-              styles.pricingButton,
-              styles.annualButton,
-              { backgroundColor: colors.textPrimary, opacity: isLoading ? 0.6 : 1 },
-            ]}
-            onPress={() => handlePurchase(PRODUCT_IDS.annual)}
-            disabled={isLoading}
-            accessibilityLabel="Start 7-day free trial — $3.83 per week, billed $199 per year"
-            accessibilityRole="button"
-            activeOpacity={0.85}
-          >
-            <View style={[styles.annualBadge, { backgroundColor: colors.accent }]}>
-              <Text style={styles.annualBadgeText}>Best value</Text>
-            </View>
-            <Text style={[styles.pricingButtonTitle, styles.annualButtonTitle]}>
-              Start 7-day free trial
-            </Text>
-            <Text style={[styles.pricingButtonSubtitle, styles.annualButtonSubtitle]}>
-              $3.83/wk, billed $199/yr
-            </Text>
-          </TouchableOpacity>
-
-          {/* Monthly */}
-          <TouchableOpacity
-            style={[
-              styles.pricingButton,
-              styles.secondaryButton,
-              {
-                borderColor: colors.border,
-                backgroundColor: colors.surfaceElevated,
-                opacity: isLoading ? 0.6 : 1,
-              },
-            ]}
-            onPress={() => handlePurchase(PRODUCT_IDS.monthly)}
-            disabled={isLoading}
-            accessibilityLabel="$18.99 per month"
-            accessibilityRole="button"
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.pricingButtonTitle, { color: colors.textPrimary }]}>
-              $18.99 / month
-            </Text>
-          </TouchableOpacity>
-
-          {/* Weekly */}
-          <TouchableOpacity
-            style={[
-              styles.pricingButton,
-              styles.secondaryButton,
-              {
-                borderColor: colors.border,
-                backgroundColor: colors.surfaceElevated,
-                opacity: isLoading ? 0.6 : 1,
-              },
-            ]}
-            onPress={() => handlePurchase(PRODUCT_IDS.weekly)}
-            disabled={isLoading}
-            accessibilityLabel="$5.99 per week"
-            accessibilityRole="button"
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.pricingButtonTitle, { color: colors.textPrimary }]}>
-              $5.99 / week
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Free dismiss link */}
-        <TouchableOpacity
-          onPress={goToApp}
-          style={styles.dismissLink}
-          accessibilityLabel="Continue with free Bible reader"
-          accessibilityRole="button"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Text style={[styles.dismissText, { color: colors.textSecondary }]}>
-            Continue with free Bible reader
-          </Text>
-        </TouchableOpacity>
-
-        {/* Restore purchases */}
+        {/* Restore */}
         <TouchableOpacity
           onPress={handleRestore}
-          style={styles.restoreLink}
           disabled={isLoading}
-          accessibilityLabel="Restore purchases"
+          style={styles.restoreLink}
           accessibilityRole="button"
         >
-          <Text style={[styles.restoreText, { color: colors.textTertiary }]}>
-            Restore purchases
-          </Text>
+          <Text style={[styles.restoreText, { color: colors.textTertiary }]}>Restore purchases</Text>
         </TouchableOpacity>
 
-        {/* Apple disclosure */}
+        {/* Disclosure */}
         <Text style={[styles.disclosure, { color: colors.textTertiary }]}>
-          {`Payment will be charged to your Apple ID account at the confirmation of purchase. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel subscriptions in your App Store account settings after purchase. Any unused portion of a free trial will be forfeited when you purchase a subscription.`}
+          Payment charged to your Apple ID at confirmation. Subscription renews automatically unless cancelled at least 24 hours before the end of the current period. Any unused free trial portion is forfeited on purchase.
         </Text>
+
+        {/* Bottom padding for sticky CTA */}
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Full-screen loading overlay */}
+      {/* Sticky CTA */}
+      <View style={[styles.stickyFooter, { paddingBottom: insets.bottom + Spacing.base, backgroundColor: colors.background, borderTopColor: colors.border }]}>
+        <TouchableOpacity
+          style={[styles.ctaButton, { backgroundColor: colors.accent, opacity: isLoading ? 0.6 : 1 }]}
+          onPress={handleSubscribe}
+          disabled={isLoading}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={ctaLabel}
+        >
+          {isLoading
+            ? <ActivityIndicator size="small" color="#FFFFFF" />
+            : <Text style={styles.ctaText}>{ctaLabel}</Text>
+          }
+        </TouchableOpacity>
+      </View>
+
+      {/* Loading overlay */}
       {isLoading && (
         <View style={styles.loadingOverlay}>
-          <View
-            style={[
-              styles.loadingCard,
-              { backgroundColor: colors.surfaceElevated },
-              Shadow.md,
-            ]}
-          >
+          <View style={[styles.loadingCard, { backgroundColor: colors.surfaceElevated }, Shadow.md]}>
             <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              Processing...
-            </Text>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Processing…</Text>
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -332,167 +268,167 @@ export default function PaywallScreen() {
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-  },
+  root: { flex: 1 },
   scrollContent: {
     paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing['3xl'],
-    paddingTop:
-      Platform.OS === 'android'
-        ? (StatusBar.currentHeight ?? 0) + Spacing.base
-        : Spacing['2xl'],
   },
 
-  // Hero
-  heroSection: {
+  hero: {
     alignItems: 'center',
     marginBottom: Spacing['2xl'],
     gap: Spacing.sm,
   },
   headline: {
-    fontSize: T.size['2xl'],
-    fontFamily: T.fontFamily.serif,
+    fontFamily: T.fontFamily.serifBold,
+    fontSize: T.size['3xl'],
+    lineHeight: T.size['3xl'] * 1.2,
     textAlign: 'center',
-    lineHeight: T.size['2xl'] * 1.25,
   },
   subheadline: {
-    fontSize: T.size.base,
     fontFamily: T.fontFamily.regular,
+    fontSize: T.size.md,
+    lineHeight: T.size.md * 1.55,
     textAlign: 'center',
-    lineHeight: T.size.base * T.lineHeight.normal,
   },
 
-  // Feature table
-  table: {
+  // Feature list
+  featureCard: {
     borderRadius: Radius.lg,
-    borderWidth: 1,
+    borderWidth: 1.5,
     overflow: 'hidden',
     marginBottom: Spacing['2xl'],
-  },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.base,
+    paddingBottom: Spacing.sm,
   },
-  tableRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  featureCardTitle: {
+    fontFamily: T.fontFamily.semibold,
+    fontSize: T.size.xs,
+    letterSpacing: 0.8,
+    marginBottom: Spacing.md,
   },
-  tableHeader: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  featureRow: {
+    flexDirection: 'row',
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
   },
-  featureCell: {
-    flex: 1,
-  },
-  planCell: {
-    width: 52,
-    alignItems: 'center',
-  },
-  planHeaderText: {
-    fontSize: T.size.sm,
-    fontFamily: T.fontFamily.medium,
-  },
-  proPlanText: {
+  bullet: {
     fontFamily: T.fontFamily.bold,
+    fontSize: T.size.md,
+    lineHeight: T.size.base * 1.5,
   },
-  featureLabel: {
-    fontSize: T.size.sm,
-    fontFamily: T.fontFamily.regular,
-    lineHeight: T.size.sm * T.lineHeight.normal,
+  featureText: {
+    flex: 1,
+    gap: 2,
   },
-  checkmark: {
+  featureTitle: {
+    fontFamily: T.fontFamily.semibold,
     fontSize: T.size.base,
-    fontFamily: T.fontFamily.medium,
+    lineHeight: T.size.base * 1.4,
+  },
+  featureDesc: {
+    fontFamily: T.fontFamily.regular,
+    fontSize: T.size.sm,
+    lineHeight: T.size.sm * 1.5,
   },
 
-  // Pricing section
-  pricingSection: {
-    gap: Spacing.md,
+  // Plans
+  plans: {
+    gap: Spacing.sm,
     marginBottom: Spacing.xl,
   },
-  pricingButton: {
+  planWrapper: {
+    position: 'relative',
+  },
+  bestValueBadge: {
+    alignSelf: 'flex-start',
+    marginLeft: Spacing.base,
+    marginBottom: -10,
+    borderRadius: Radius.full,
+    borderWidth: 1.5,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 3,
+    zIndex: 1,
+  },
+  bestValueText: {
+    fontFamily: T.fontFamily.semibold,
+    fontSize: T.size.xs,
+    letterSpacing: 0.8,
+  },
+  planCard: {
     borderRadius: Radius.lg,
     paddingVertical: Spacing.base,
     paddingHorizontal: Spacing.xl,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    overflow: 'visible',
+    justifyContent: 'space-between',
   },
-  annualButton: {
-    paddingTop: Spacing.xl + 4,
-    paddingBottom: Spacing.lg,
-    minHeight: 88,
+  planCardAnnual: {
+    paddingTop: Spacing.lg,
   },
-  annualBadge: {
-    position: 'absolute',
-    top: -12,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 3,
+  planLeft: {
+    flex: 1,
+    gap: 2,
   },
-  annualBadgeText: {
-    color: '#FFFFFF',
-    fontSize: T.size.xs,
-    fontFamily: T.fontFamily.semibold,
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  annualButtonTitle: {
-    color: '#FFFFFF',
-    fontSize: T.size.md,
-    fontFamily: T.fontFamily.semibold,
-  },
-  annualButtonSubtitle: {
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 2,
-  },
-  secondaryButton: {
-    borderWidth: 1,
-  },
-  pricingButtonTitle: {
-    fontSize: T.size.base,
+  planTitle: {
     fontFamily: T.fontFamily.medium,
+    fontSize: T.size.base,
   },
-  pricingButtonSubtitle: {
-    fontSize: T.size.sm,
+  planSubtitle: {
     fontFamily: T.fontFamily.regular,
+    fontSize: T.size.sm,
+  },
+  planRight: {
+    alignItems: 'flex-end',
+  },
+  planPrice: {
+    fontFamily: T.fontFamily.serifBold,
+    fontSize: T.size.xl,
+  },
+  planUnit: {
+    fontFamily: T.fontFamily.regular,
+    fontSize: T.size.xs,
   },
 
-  // Links
-  dismissLink: {
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  dismissText: {
-    fontSize: T.size.sm,
-    fontFamily: T.fontFamily.regular,
-    textDecorationLine: 'underline',
-  },
   restoreLink: {
     alignItems: 'center',
-    paddingVertical: Spacing.xs,
-    marginBottom: Spacing.xl,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.base,
   },
   restoreText: {
-    fontSize: T.size.xs,
     fontFamily: T.fontFamily.regular,
+    fontSize: T.size.sm,
   },
 
-  // Disclosure
   disclosure: {
-    fontSize: T.size.xs,
     fontFamily: T.fontFamily.regular,
+    fontSize: T.size.xs,
     textAlign: 'center',
-    lineHeight: T.size.xs * T.lineHeight.relaxed,
+    lineHeight: T.size.xs * 1.7,
   },
 
-  // Loading overlay
+  // Sticky footer
+  stickyFooter: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.base,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  ctaButton: {
+    borderRadius: Radius.full,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaText: {
+    fontFamily: T.fontFamily.semibold,
+    fontSize: T.size.md,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -504,7 +440,7 @@ const styles = StyleSheet.create({
     minWidth: 140,
   },
   loadingText: {
-    fontSize: T.size.sm,
     fontFamily: T.fontFamily.regular,
+    fontSize: T.size.sm,
   },
 });
